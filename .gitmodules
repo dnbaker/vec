@@ -1,0 +1,6 @@
+[submodule "sleef"]
+	path = sleef
+	url = https://github.com/shibatch/sleef
+[submodule "blaze"]
+	path = blaze
+	url = https://bitbucket.org/blaze-lib/blaze.git
