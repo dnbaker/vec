@@ -10,14 +10,24 @@
 #include "blaze/Math.h"
 
 #ifndef IS_BLAZE
-#define IS_BLAZE(x) (blaze::IsVector<x>::value || blaze::IsMatrix<x>::value)
+#define IS_BLAZE(x) (::blaze::IsVector<x>::value || ::blaze::IsMatrix<x>::value)
 #endif
 #ifndef IS_COMPRESSED_BLAZE
-#define IS_COMPRESSED_BLAZE(x) (blaze::IsSparseVector<x>::value || blaze::IsSparseMatrix<x>::value)
+#define IS_COMPRESSED_BLAZE(x) (::blaze::IsSparseVector<x>::value || ::blaze::IsSparseMatrix<x>::value)
 #endif
 #ifndef IS_UNCOMPRESSED_BLAZE
 #define IS_UNCOMPRESSED_BLAZE(x) (IS_BLAZE(x) && !IS_COMPRESSED_BLAZE(x))
 #endif
+
+/*
+  TODO: Check Blaze transpose flags and row/column type to compile-time determine
+        where storage is contiguous. Currently, it assumes that storage is,
+        but this will produce incorrect results if accessing a column in a
+        default-stored matrix or a row in a transposed matrix.
+*/
+
+
+namespace vec {
 
 namespace scalar {
     using namespace std;
@@ -30,8 +40,6 @@ namespace scalar {
     template<typename T> auto sqrt_u35(T val) {return sqrt(val);}
     template<typename T> auto sqrt_u05(T val) {return sqrt(val);}
 }
-
-namespace vec {
 
 template<typename ValueType>
 struct SIMDTypes;
@@ -115,29 +123,28 @@ struct SIMDTypes;
 
 template<>
 struct SIMDTypes<float>{
+    using ValueType = float;
 #if _FEATURE_AVX512F
     using Type = __m512;
     declare_all(ps, 512)
-    static constexpr size_t ALN = 64;
     dec_double_sz(__m512)
     dec_all_trig(f16, avx512f);
 #elif __AVX2__
     using Type = __m256;
     declare_all(ps, 256)
-    static constexpr size_t ALN = 32;
     dec_double_sz(__m256)
     dec_all_trig(f8, avx2);
 #elif __SSE2__
     using Type = __m128;
     declare_all(ps, )
-    static constexpr size_t ALN = 16;
     dec_double_sz(__m128)
     dec_all_trig(f4, sse2);
 #else
 #error("Need at least sse2")
 #endif
+    static constexpr size_t ALN = sizeof(Type) / sizeof(char);
     static constexpr size_t MASK = ALN - 1;
-    static constexpr size_t COUNT = sizeof(Type) / sizeof(float);
+    static constexpr size_t COUNT = sizeof(Type) / sizeof(ValueType);
     template<typename T>
     static constexpr bool aligned(T *ptr) {
         return (reinterpret_cast<uint64_t>(ptr) & MASK) == 0;
@@ -146,29 +153,28 @@ struct SIMDTypes<float>{
 
 template<>
 struct SIMDTypes<double>{
+    using ValueType = double;
 #if _FEATURE_AVX512F
     using Type = __m512d;
     declare_all(pd, 512)
-    static constexpr size_t ALN = 64;
     dec_double_sz(__m512d);
     dec_all_trig(d8, avx512f);
 #elif __AVX2__
     using Type = __m256d;
     declare_all(pd, 256)
-    static constexpr size_t ALN = 32;
     dec_double_sz(__m256d);
     dec_all_trig(d4, avx2);
 #elif __SSE2__
     using Type = __m128d;
     declare_all(pd, )
-    static constexpr size_t ALN = 16;
     dec_double_sz(__m128d);
     dec_all_trig(d2, sse2);
 #else
 #error("Need at least sse2")
 #endif
+    static constexpr size_t ALN = sizeof(Type) / sizeof(char);
     static constexpr size_t MASK = ALN - 1;
-    static constexpr size_t COUNT = sizeof(Type) / sizeof(double);
+    static constexpr size_t COUNT = sizeof(Type) / sizeof(ValueType);
     template<typename T>
     static constexpr bool aligned(T *ptr) {
         return (reinterpret_cast<uint64_t>(ptr) & MASK) == 0;
@@ -180,20 +186,20 @@ template<typename FloatType>
 void blockmul(FloatType *pos, size_t nelem, FloatType prod) {
 #if __AVX2__ || _FEATURE_AVX512F || __SSE2__
 #pragma message("Using vectorized scalar multiplication.")
-        using SIMDType = typename vec::SIMDTypes<FloatType>::Type;
-        SIMDType factor(vec::SIMDTypes<FloatType>::set1(prod));
+        using SIMDType = typename ::vec::SIMDTypes<FloatType>::Type;
+        SIMDType factor(::vec::SIMDTypes<FloatType>::set1(prod));
         SIMDType *ptr((SIMDType *)pos);
         FloatType *end(pos + nelem);
-        if((uint64_t)ptr & vec::SIMDTypes<FloatType>::MASK) {
+        if((uint64_t)ptr & ::vec::SIMDTypes<FloatType>::MASK) {
             while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType)) {
-                vec::SIMDTypes<FloatType>::storeu((FloatType *)ptr,
-                    vec::SIMDTypes<FloatType>::mul(factor, vec::SIMDTypes<FloatType>::loadu((FloatType *)ptr)));
+                ::vec::SIMDTypes<FloatType>::storeu((FloatType *)ptr,
+                    ::vec::SIMDTypes<FloatType>::mul(factor, ::vec::SIMDTypes<FloatType>::loadu((FloatType *)ptr)));
                 ++ptr;
             }
         } else {
             while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType)) {
-                vec::SIMDTypes<FloatType>::store((FloatType *)ptr,
-                    vec::SIMDTypes<FloatType>::mul(factor, vec::SIMDTypes<FloatType>::load((FloatType *)ptr)));
+                ::vec::SIMDTypes<FloatType>::store((FloatType *)ptr,
+                    ::vec::SIMDTypes<FloatType>::mul(factor, ::vec::SIMDTypes<FloatType>::load((FloatType *)ptr)));
                 ++ptr;
             }
         }
@@ -217,20 +223,20 @@ template<typename FloatType>
 void blockadd(FloatType *pos, size_t nelem, FloatType val) {
 #if __AVX2__ || _FEATURE_AVX512F || __SSE2__
 #pragma message("Using vectorized scalar vector addition.")
-        using SIMDType = typename vec::SIMDTypes<FloatType>::Type;
-        SIMDType inc(vec::SIMDTypes<FloatType>::set1(val));
+        using SIMDType = typename ::vec::SIMDTypes<FloatType>::Type;
+        SIMDType inc(::vec::SIMDTypes<FloatType>::set1(val));
         SIMDType *ptr((SIMDType *)pos);
         FloatType *end(pos + nelem);
-        if((uint64_t)ptr & vec::SIMDTypes<FloatType>::MASK) {
+        if((uint64_t)ptr & ::vec::SIMDTypes<FloatType>::MASK) {
             while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType)) {
-                vec::SIMDTypes<FloatType>::storeu((FloatType *)ptr,
-                    vec::SIMDTypes<FloatType>::add(inc, vec::SIMDTypes<FloatType>::loadu((FloatType *)ptr)));
+                ::vec::SIMDTypes<FloatType>::storeu((FloatType *)ptr,
+                    ::vec::SIMDTypes<FloatType>::add(inc, ::vec::SIMDTypes<FloatType>::loadu((FloatType *)ptr)));
                 ++ptr;
             }
         } else {
             while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType)) {
-                vec::SIMDTypes<FloatType>::store((FloatType *)ptr,
-                    vec::SIMDTypes<FloatType>::add(inc, vec::SIMDTypes<FloatType>::load((FloatType *)ptr)));
+                ::vec::SIMDTypes<FloatType>::store((FloatType *)ptr,
+                    ::vec::SIMDTypes<FloatType>::add(inc, ::vec::SIMDTypes<FloatType>::load((FloatType *)ptr)));
                 ++ptr;
             }
         }
@@ -249,19 +255,19 @@ template<typename FloatType>
 void vecmul(FloatType *to, const FloatType *from, size_t nelem) {
 #if __AVX2__ || _FEATURE_AVX512F || __SSE2__
 #pragma message("Using vectorized multiplication.")
-        using SIMDType = typename vec::SIMDTypes<FloatType>::Type;
+        using SIMDType = typename ::vec::SIMDTypes<FloatType>::Type;
         SIMDType *ptr((SIMDType *)to), *fromptr((SIMDType *)from);
         FloatType *end(to + nelem);
-        if((uint64_t)ptr & vec::SIMDTypes<FloatType>::MASK || (uint64_t)fromptr & (vec::SIMDTypes<FloatType>::MASK)) {
+        if((uint64_t)ptr & ::vec::SIMDTypes<FloatType>::MASK || (uint64_t)fromptr & (::vec::SIMDTypes<FloatType>::MASK)) {
             while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType)) {
-                vec::SIMDTypes<FloatType>::storeu((FloatType *)ptr,
-                    vec::SIMDTypes<FloatType>::mul(vec::SIMDTypes<FloatType>::loadu((FloatType *)fromptr), vec::SIMDTypes<FloatType>::loadu((FloatType *)ptr)));
+                ::vec::SIMDTypes<FloatType>::storeu((FloatType *)ptr,
+                    ::vec::SIMDTypes<FloatType>::mul(::vec::SIMDTypes<FloatType>::loadu((FloatType *)fromptr), ::vec::SIMDTypes<FloatType>::loadu((FloatType *)ptr)));
                 ++ptr; ++fromptr;
             }
         } else {
             while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType)) {
-                vec::SIMDTypes<FloatType>::store((FloatType *)ptr,
-                    vec::SIMDTypes<FloatType>::mul(vec::SIMDTypes<FloatType>::load((FloatType *)fromptr), vec::SIMDTypes<FloatType>::load((FloatType *)ptr)));
+                ::vec::SIMDTypes<FloatType>::store((FloatType *)ptr,
+                    ::vec::SIMDTypes<FloatType>::mul(::vec::SIMDTypes<FloatType>::load((FloatType *)fromptr), ::vec::SIMDTypes<FloatType>::load((FloatType *)ptr)));
                 ++ptr; ++fromptr;
             }
         }
@@ -277,7 +283,7 @@ template<typename FloatType, typename Functor>
 void block_apply(FloatType *pos, size_t nelem, const Functor &func=Functor{}) {
 #if __AVX2__ || _FEATURE_AVX512F || __SSE2__
 #pragma message("Using vectorized multiplication.")
-        using Space = typename vec::SIMDTypes<FloatType>;
+        using Space = typename ::vec::SIMDTypes<FloatType>;
         using SIMDType = typename Space::Type;
         SIMDType *ptr((SIMDType *)pos);
         FloatType *end(pos + nelem);
@@ -311,10 +317,7 @@ void block_apply(Container &con, const Functor &func=Functor{}) {
         if(&con[1] - &con[0] == 1) {
         const size_t nelem(con.size());
         block_apply(&(*std::begin(con)), nelem, func);
-        } else {
-            Functor func;
-            for(auto &el: con) el = func.scalar(el);
-        }
+        } else for(auto &el: con) el = func.scalar(el);
     }
 }
 
@@ -324,6 +327,9 @@ void block_apply(Container &con, const Functor &func=Functor{}) {
 #undef SLEEF_OP
 #undef dec_sleefop_prec
 #undef dec_all_precs
+#undef dec_all_precs_u05
 #undef dec_all_trig
+#undef declare_all
+#undef dec_double_sz
 
 #endif // #ifndef _VEC_H__
