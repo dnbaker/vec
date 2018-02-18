@@ -227,19 +227,14 @@ void blockadd(FloatType *pos, size_t nelem, FloatType val) {
         SIMDType inc(SIMDTypes<FloatType>::set1(val));
         SIMDType *ptr((SIMDType *)pos);
         FloatType *end(pos + nelem);
-        if(!SIMDType::aligned(ptr)) {
-            while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType)) {
+        if(!SIMDType::aligned(ptr))
+            while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType))
                 SIMDType::storeu((FloatType *)ptr,
-                    SIMDType::add(inc, SIMDType::loadu((FloatType *)ptr)));
-                ++ptr;
-            }
-        } else {
-            while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType)) {
+                    SIMDType::add(inc, SIMDType::loadu((FloatType *)ptr))), ++ptr;
+        else
+            while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType))
                 SIMDType::store((FloatType *)ptr,
-                    SIMDType::add(inc, SIMDType::load((FloatType *)ptr)));
-                ++ptr;
-            }
-        }
+                    SIMDType::add(inc, SIMDType::load((FloatType *)ptr))), ++ptr;
         pos = (FloatType *)ptr;
         while(pos < end) *pos++ += val;
 #else
@@ -258,31 +253,40 @@ void vecmul(FloatType *to, const FloatType *from, size_t nelem) {
         using SIMDType = typename SIMDTypes<FloatType>::Type;
         SIMDType *ptr((SIMDType *)to), *fromptr((SIMDType *)from);
         FloatType *end(to + nelem);
-        if(!(SIMDType::aligned(ptr) && SIMDType::aligned(fromptr))) {
-            while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType)) {
+        if(!(SIMDType::aligned(ptr) && SIMDType::aligned(fromptr)))
+            while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType))
                 SIMDType::storeu((FloatType *)ptr,
-                    SIMDType::mul(SIMDType::loadu((FloatType *)fromptr), SIMDType::loadu((FloatType *)ptr)));
-                ++ptr; ++fromptr;
-            }
-        } else {
-            while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType)) {
+                    SIMDType::mul(SIMDType::loadu((FloatType *)fromptr), SIMDType::loadu((FloatType *)ptr))),
+                ++ptr, ++fromptr;
+        else
+            while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType))
                 SIMDType::store((FloatType *)ptr,
-                    SIMDType::mul(SIMDType::load((FloatType *)fromptr), SIMDType::load((FloatType *)ptr)));
-                ++ptr; ++fromptr;
-            }
-        }
+                    SIMDType::mul(SIMDType::load((FloatType *)fromptr), SIMDType::load((FloatType *)ptr))),
+                ++ptr, ++fromptr;
         to = (FloatType *)ptr, from = (FloatType *)fromptr;
         while(to < end) *to++ *= *from++;
 #else
-#pragma message("Enjoy your serial version.")
-            for(size_t i(0); i < (static_cast<size_t>(1) << nelem); ++i) to[i] *= from[i]; // Could be vectorized.
+#pragma message("Enjoy your serial, if unrolled version.")
+        size_t leftover = nelem & (0x7u), loops(nelem >> 3);
+        switch(nelem & 0x7u) {
+            while(loops--) {
+                case 7: *to++ *= *from++;
+                case 6: *to++ *= *from++;
+                case 5: *to++ *= *from++;
+                case 4: *to++ *= *from++;
+                case 3: *to++ *= *from++;
+                case 2: *to++ *= *from++;
+                case 1: *to++ *= *from++;
+                case 0: *to++ *= *from++;
+            }
+        }
 #endif
 }
 
 template<typename FloatType, typename Functor>
 void block_apply(FloatType *pos, size_t nelem, const Functor &func=Functor{}) {
 #if __AVX2__ || _FEATURE_AVX512F || __SSE2__
-#pragma message("Using vectorized multiplication.")
+#pragma message("Using vectorized function application.")
         using Space = typename SIMDTypes<FloatType>;
         using SIMDType = typename Space::Type;
         SIMDType *ptr((SIMDType *)pos);
