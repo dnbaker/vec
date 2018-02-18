@@ -267,18 +267,18 @@ void vecmul(FloatType *to, const FloatType *from, size_t nelem) {
         while(to < end) *to++ *= *from++;
 #else
 #pragma message("Enjoy your serial, if unrolled version.")
-        size_t leftover = nelem & (0x7u), loops(nelem >> 3);
+        size_t leftover = nelem & (0x7u), loops((nelem + 7) >> 3);
         switch(nelem & 0x7u) {
-            while(loops--) {
-                case 7: *to++ *= *from++;
-                case 6: *to++ *= *from++;
-                case 5: *to++ *= *from++;
-                case 4: *to++ *= *from++;
-                case 3: *to++ *= *from++;
-                case 2: *to++ *= *from++;
-                case 1: *to++ *= *from++;
-                case 0: *to++ *= *from++;
-            }
+            case 0: do {
+                    *to++ *= *from++;
+            case 7: *to++ *= *from++;
+            case 6: *to++ *= *from++;
+            case 5: *to++ *= *from++;
+            case 4: *to++ *= *from++;
+            case 3: *to++ *= *from++;
+            case 2: *to++ *= *from++;
+            case 1: *to++ *= *from++;
+            } while(--loops);
         }
 #endif
 }
