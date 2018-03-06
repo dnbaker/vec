@@ -10,15 +10,16 @@
 #include "blaze/Math.h"
 
 #ifndef IS_BLAZE
-#define IS_BLAZE(x) (::blaze::IsVector<x>::value || ::blaze::IsMatrix<x>::value)
+#  define IS_BLAZE(x) (::blaze::IsVector<x>::value || ::blaze::IsMatrix<x>::value)
 #endif
 #ifndef IS_CONTIGUOUS_BLAZE
-#define IS_CONTIGUOUS_BLAZE(x) (::blaze::TransposeFlag<std::decay_t<x>::value)
+#  define IS_CONTIGUOUS_BLAZE(x) (bool(::blaze::TransposeFlag<x>::value))
+#endif
 #ifndef IS_COMPRESSED_BLAZE
-#define IS_COMPRESSED_BLAZE(x) (::blaze::IsSparseVector<x>::value || ::blaze::IsSparseMatrix<x>::value)
+#  define IS_COMPRESSED_BLAZE(x) (::blaze::IsSparseVector<x>::value || ::blaze::IsSparseMatrix<x>::value)
 #endif
 #ifndef IS_CONTIGUOUS_UNCOMPRESSED_BLAZE
-#define IS_CONTIGUOUS_UNCOMPRESSED_BLAZE(x) (IS_BLAZE(x) && !IS_COMPRESSED_BLAZE(x) && IS_CONTIGUOUS_BLAZE(x))
+#  define IS_CONTIGUOUS_UNCOMPRESSED_BLAZE(x) (IS_BLAZE(x) && !IS_COMPRESSED_BLAZE(x) && IS_CONTIGUOUS_BLAZE(x))
 #endif
 
 namespace vec {
@@ -181,19 +182,20 @@ void blockmul(FloatType *pos, size_t nelem, FloatType prod) {
 #if __AVX2__ || _FEATURE_AVX512F || __SSE2__
 #pragma message("Using vectorized scalar multiplication.")
         using SIMDType = typename SIMDTypes<FloatType>::Type;
+        using Space = SIMDTypes<FloatType>;
         SIMDType factor(SIMDTypes<FloatType>::set1(prod));
         SIMDType *ptr((SIMDType *)pos);
         FloatType *end(pos + nelem);
-        if(!SIMDType::aligned(ptr)) {
+        if(!Space::aligned(ptr)) {
             while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType)) {
-                SIMDType::storeu((FloatType *)ptr,
-                    SIMDType::mul(factor, SIMDType::loadu((FloatType *)ptr)));
+                Space::storeu((FloatType *)ptr,
+                    Space::mul(factor, Space::loadu((FloatType *)ptr)));
                 ++ptr;
             }
         } else {
             while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType)) {
-                SIMDType::store((FloatType *)ptr,
-                    SIMDType::mul(factor, SIMDType::load((FloatType *)ptr)));
+                Space::store((FloatType *)ptr,
+                    Space::mul(factor, Space::load((FloatType *)ptr)));
                 ++ptr;
             }
         }
@@ -218,17 +220,18 @@ void blockadd(FloatType *pos, size_t nelem, FloatType val) {
 #if __AVX2__ || _FEATURE_AVX512F || __SSE2__
 #pragma message("Using vectorized scalar vector addition.")
         using SIMDType = typename SIMDTypes<FloatType>::Type;
+        using Space = SIMDTypes<FloatType>;
         SIMDType inc(SIMDTypes<FloatType>::set1(val));
         SIMDType *ptr((SIMDType *)pos);
         FloatType *end(pos + nelem);
-        if(!SIMDType::aligned(ptr))
+        if(!Space::aligned(ptr))
             while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType))
-                SIMDType::storeu((FloatType *)ptr,
-                    SIMDType::add(inc, SIMDType::loadu((FloatType *)ptr))), ++ptr;
+                Space::storeu((FloatType *)ptr,
+                    Space::add(inc, Space::loadu((FloatType *)ptr))), ++ptr;
         else
             while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType))
-                SIMDType::store((FloatType *)ptr,
-                    SIMDType::add(inc, SIMDType::load((FloatType *)ptr))), ++ptr;
+                Space::store((FloatType *)ptr,
+                    Space::add(inc, Space::load((FloatType *)ptr))), ++ptr;
         pos = (FloatType *)ptr;
         while(pos < end) *pos++ += val;
 #else
@@ -245,17 +248,18 @@ void vecmul(FloatType *to, const FloatType *from, size_t nelem) {
 #if __AVX2__ || _FEATURE_AVX512F || __SSE2__
 #pragma message("Using vectorized multiplication.")
         using SIMDType = typename SIMDTypes<FloatType>::Type;
+        using Space = SIMDTypes<FloatType>;
         SIMDType *ptr((SIMDType *)to), *fromptr((SIMDType *)from);
         FloatType *end(to + nelem);
-        if(!(SIMDType::aligned(ptr) && SIMDType::aligned(fromptr)))
+        if(!(Space::aligned(ptr) && Space::aligned(fromptr)))
             while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType))
-                SIMDType::storeu((FloatType *)ptr,
-                    SIMDType::mul(SIMDType::loadu((FloatType *)fromptr), SIMDType::loadu((FloatType *)ptr))),
+                Space::storeu((FloatType *)ptr,
+                    Space::mul(Space::loadu((FloatType *)fromptr), Space::loadu((FloatType *)ptr))),
                 ++ptr, ++fromptr;
         else
             while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType))
-                SIMDType::store((FloatType *)ptr,
-                    SIMDType::mul(SIMDType::load((FloatType *)fromptr), SIMDType::load((FloatType *)ptr))),
+                Space::store((FloatType *)ptr,
+                    Space::mul(Space::load((FloatType *)fromptr), Space::load((FloatType *)ptr))),
                 ++ptr, ++fromptr;
         to = (FloatType *)ptr, from = (FloatType *)fromptr;
         while(to < end) *to++ *= *from++;
@@ -280,8 +284,7 @@ void vecmul(FloatType *to, const FloatType *from, size_t nelem) {
 template<typename FloatType, typename Functor>
 void block_apply(FloatType *pos, size_t nelem, const Functor &func=Functor{}) {
 #if __AVX2__ || _FEATURE_AVX512F || __SSE2__
-#pragma message("Using vectorized function application.")
-        using Space = typename SIMDTypes<FloatType>;
+        using Space = SIMDTypes<FloatType>;
         using SIMDType = typename Space::Type;
         SIMDType *ptr((SIMDType *)pos);
         FloatType *end(pos + nelem);
