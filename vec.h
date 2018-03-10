@@ -243,6 +243,23 @@ void blockadd(FloatType *pos, size_t nelem, FloatType val) {
 BLOCKOP(mul, el *= val)
 BLOCKOP(add, el += val)
 
+
+#ifndef DO_DUFF
+#define DO_DUFF(len, ITER) \
+    do { \
+        if(len) {\
+            std::uint64_t loop = (len + 7) >> 3;\
+            switch(len & 7) {\
+                case 0: do {\
+                    ITER; [[fallthrough]];\
+                    case 7: ITER; [[fallthrough]]; case 6: ITER; [[fallthrough]]; case 5: ITER; [[fallthrough]];\
+                    case 4: ITER; [[fallthrough]]; case 3: ITER; [[fallthrough]]; case 2: ITER; [[fallthrough]]; case 1: ITER;\
+                } while (--loop);\
+            }\
+        }\
+    } while(0)
+#endif
+
 template<typename FloatType>
 void vecmul(FloatType *to, const FloatType *from, size_t nelem) {
 #if __AVX2__ || _FEATURE_AVX512F || __SSE2__
@@ -265,19 +282,7 @@ void vecmul(FloatType *to, const FloatType *from, size_t nelem) {
         while(to < end) *to++ *= *from++;
 #else
 #pragma message("Enjoy your serial, if unrolled version.")
-        size_t leftover = nelem & (0x7u), loops((nelem + 7) >> 3);
-        switch(nelem & 0x7u) {
-            case 0: do {
-                    *to++ *= *from++;
-            case 7: *to++ *= *from++;
-            case 6: *to++ *= *from++;
-            case 5: *to++ *= *from++;
-            case 4: *to++ *= *from++;
-            case 3: *to++ *= *from++;
-            case 2: *to++ *= *from++;
-            case 1: *to++ *= *from++;
-            } while(--loops);
-        }
+        DO_DUFF(nelem, *to++ *= *from++);
 #endif
 }
 
