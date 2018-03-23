@@ -9,6 +9,8 @@
 #include <cmath>
 #include <iterator>
 #include <type_traits>
+#include <cstdint>
+#include <array>
 #ifndef NO_BLAZE
 #include "blaze/Math.h"
 #endif
@@ -28,6 +30,7 @@
 
 namespace vec {
 
+using std::uint64_t;
 #ifndef NO_SLEEF
 namespace scalar {
     using namespace std;
@@ -70,6 +73,24 @@ struct SIMDTypes;
    decop(andnot, suf, sz); \
    decop(blendv, suf, sz); \
    decop(cmp, suf, sz); \
+
+#define declare_int_ls(suf, sz) \
+    decop(loadu, si##sz, sz); \
+    decop(load, si##sz, sz); \
+    decop(storeu, si##sz, sz); \
+    decop(store, si##sz, sz);
+
+#define declare_int_epi64(sz) \
+    decop(slli, epi64, sz); \
+    decop(srli, epi64, sz); \
+    decop(add, epi64, sz); \
+    decop(sub, epi64, sz); \
+    /*static constexpr decltype(&OP(xor, epi64, sz)) xor_fn = &OP(xor, epi64, sz); */\
+    decop(set1, epi64x, sz);
+
+#define declare_all_int(suf, sz) \
+    declare_int_ls(suf, sz) \
+    declare_int_epi64(sz)
 
 #ifndef NO_SLEEF
 
@@ -124,6 +145,39 @@ struct SIMDTypes;
 
 #endif // #ifndef NO_SLEEF
     
+
+template<>
+struct SIMDTypes<uint64_t>{
+    using ValueType = uint64_t;
+#if _FEATURE_AVX512F
+    using Type = __m512i;
+    declare_all_int(epi64, 512)
+#elif __AVX2__
+    using Type = __m256i;
+    declare_all_int(epi64, 256)
+#elif __SSE2__
+    using Type = __m128i;
+    declare_all_int(epi64,)
+#else
+#error("Need at least sse2")
+#endif
+    static constexpr size_t ALN = sizeof(Type) / sizeof(char);
+    static constexpr size_t MASK = ALN - 1;
+    static constexpr size_t COUNT = sizeof(Type) / sizeof(ValueType);
+    template<typename T>
+    static constexpr bool aligned(T *ptr) {
+        return (reinterpret_cast<uint64_t>(ptr) & MASK) == 0;
+    }
+    union VType {
+        std::array<ValueType, COUNT> arr_;
+        Type                        simd_;
+        VType(Type val): simd_(val) {}
+        VType &operator=(Type val) {
+            simd_ = val;
+            return *this;
+        }
+    };
+};
 
 template<>
 struct SIMDTypes<float>{
@@ -201,7 +255,6 @@ struct SIMDTypes<double>{
 template<typename FloatType>
 void blockmul(FloatType *pos, size_t nelem, FloatType prod) {
 #if __AVX2__ || _FEATURE_AVX512F || __SSE2__
-#pragma message("Using vectorized scalar multiplication.")
         using SIMDType = typename SIMDTypes<FloatType>::Type;
         using Space = SIMDTypes<FloatType>;
         SIMDType factor(SIMDTypes<FloatType>::set1(prod));
@@ -239,7 +292,6 @@ void block##op(Container &con, double val) {\
 template<typename FloatType>
 void blockadd(FloatType *pos, size_t nelem, FloatType val) {
 #if __AVX2__ || _FEATURE_AVX512F || __SSE2__
-#pragma message("Using vectorized scalar vector addition.")
         using SIMDType = typename SIMDTypes<FloatType>::Type;
         using Space = SIMDTypes<FloatType>;
         SIMDType inc(SIMDTypes<FloatType>::set1(val));
@@ -256,7 +308,6 @@ void blockadd(FloatType *pos, size_t nelem, FloatType val) {
         pos = (FloatType *)ptr;
         while(pos < end) *pos++ += val;
 #else
-#pragma message("Enjoy your serial version.")
             for(size_t i(0); i < (static_cast<size_t>(1) << nelem); ++i) pos[i] += val; // Could be vectorized.
 #endif
 }
@@ -284,7 +335,6 @@ BLOCKOP(add, el += val)
 template<typename FloatType>
 void vecmul(FloatType *to, const FloatType *from, size_t nelem) {
 #if __AVX2__ || _FEATURE_AVX512F || __SSE2__
-#pragma message("Using vectorized multiplication.")
         using SIMDType = typename SIMDTypes<FloatType>::Type;
         using Space = SIMDTypes<FloatType>;
         SIMDType *ptr((SIMDType *)to), *fromptr((SIMDType *)from);
@@ -302,7 +352,6 @@ void vecmul(FloatType *to, const FloatType *from, size_t nelem) {
         to = (FloatType *)ptr, from = (FloatType *)fromptr;
         while(to < end) *to++ *= *from++;
 #else
-#pragma message("Enjoy your serial, if unrolled version.")
         DO_DUFF(nelem, *to++ *= *from++);
 #endif
 }
@@ -330,7 +379,6 @@ void block_apply(FloatType *pos, size_t nelem, const Functor &func=Functor{}) {
         pos = (FloatType *)ptr;
         while(pos < end) *pos  = func.scalar(*pos), ++pos;
 #else
-#pragma message("Enjoy your serial version.")
             for(size_t i(0); i < (static_cast<size_t>(1) << nelem); ++i) to[i] *= func.scalar(to[i]); // Could be vectorized.
 #endif
 }
