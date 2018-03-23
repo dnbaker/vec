@@ -1,13 +1,17 @@
 #ifndef _VEC_H__
 #define _VEC_H__
 #define NOSVML
-#include "sleef/include/sleefdft.h"
-#include "sleef.h"
+#ifndef NO_SLEEF
+#  include "sleef/include/sleefdft.h"
+#  include "sleef.h"
+#endif // #ifndef NO_SLEEF
 #include "x86intrin.h"
 #include <cmath>
 #include <iterator>
 #include <type_traits>
+#ifndef NO_BLAZE
 #include "blaze/Math.h"
+#endif
 
 #ifndef IS_BLAZE
 #  define IS_BLAZE(x) (::blaze::IsVector<x>::value || ::blaze::IsMatrix<x>::value)
@@ -24,6 +28,7 @@
 
 namespace vec {
 
+#ifndef NO_SLEEF
 namespace scalar {
     using namespace std;
     Sleef_double2 sincos(double x) {
@@ -35,6 +40,7 @@ namespace scalar {
     template<typename T> auto sqrt_u35(T val) {return sqrt(val);}
     template<typename T> auto sqrt_u05(T val) {return sqrt(val);}
 }
+#endif // #ifndef NO_SLEEF
 
 template<typename ValueType>
 struct SIMDTypes;
@@ -65,6 +71,7 @@ struct SIMDTypes;
    decop(blendv, suf, sz); \
    decop(cmp, suf, sz); \
 
+#ifndef NO_SLEEF
 
 #define SLEEF_OP(op, suf, prec, set) Sleef_##op##suf##_##prec##set
 #define dec_sleefop_prec(op, suf, prec, instructset) \
@@ -114,6 +121,8 @@ struct SIMDTypes;
    dec_sleefop_prec(tanh, suf, u10, set) \
    dec_sleefop_prec(atanh, suf, u10, set) \
    dec_all_precs_u05(sqrt, suf, set)
+
+#endif // #ifndef NO_SLEEF
     
 
 template<>
@@ -122,18 +131,24 @@ struct SIMDTypes<float>{
 #if _FEATURE_AVX512F
     using Type = __m512;
     declare_all(ps, 512)
+#ifndef NO_SLEEF
     dec_double_sz(__m512)
     dec_all_trig(f16, avx512f);
+#endif // #ifndef NO_SLEEF
 #elif __AVX2__
     using Type = __m256;
     declare_all(ps, 256)
+#ifndef NO_SLEEF
     dec_double_sz(__m256)
     dec_all_trig(f8, avx2);
+#endif // #ifndef NO_SLEEF
 #elif __SSE2__
     using Type = __m128;
     declare_all(ps, )
+#ifndef NO_SLEEF
     dec_double_sz(__m128)
     dec_all_trig(f4, sse2);
+#endif // #ifndef NO_SLEEF
 #else
 #error("Need at least sse2")
 #endif
@@ -152,18 +167,24 @@ struct SIMDTypes<double>{
 #if _FEATURE_AVX512F
     using Type = __m512d;
     declare_all(pd, 512)
+#ifndef NO_SLEEF
     dec_double_sz(__m512d);
     dec_all_trig(d8, avx512f);
+#endif // #ifndef NO_SLEEF
 #elif __AVX2__
     using Type = __m256d;
     declare_all(pd, 256)
+#ifndef NO_SLEEF
     dec_double_sz(__m256d);
     dec_all_trig(d4, avx2);
+#endif // #ifndef NO_SLEEF
 #elif __SSE2__
     using Type = __m128d;
     declare_all(pd, )
+#ifndef NO_SLEEF
     dec_double_sz(__m128d);
     dec_all_trig(d2, sse2);
+#endif // #ifndef NO_SLEEF
 #else
 #error("Need at least sse2")
 #endif
@@ -316,26 +337,33 @@ void block_apply(FloatType *pos, size_t nelem, const Functor &func=Functor{}) {
 
 template<typename Container, typename Functor>
 void block_apply(Container &con, const Functor &func=Functor{}) {
+#ifndef NO_BLAZE
     if constexpr(IS_CONTIGUOUS_UNCOMPRESSED_BLAZE(Container)) {
         const size_t nelem(con.size());
         block_apply(&(*std::begin(con)), nelem, func);
     } else {
+#endif
         if(&con[1] - &con[0] == 1) {
         const size_t nelem(con.size());
         block_apply(&(*std::begin(con)), nelem, func);
         } else for(auto &el: con) el = func.scalar(el);
+#ifndef NO_BLAZE
     }
+#endif
 }
 
 } // namespace vec
+#ifndef NO_SLEEF
 #undef OP
-#undef decop
 #undef SLEEF_OP
 #undef dec_sleefop_prec
 #undef dec_all_precs
 #undef dec_all_precs_u05
 #undef dec_all_trig
-#undef declare_all
 #undef dec_double_sz
+#endif // #ifndef NO_SLEEF
+
+#undef declare_all
+#undef decop
 
 #endif // #ifndef _VEC_H__
