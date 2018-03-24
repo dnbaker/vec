@@ -180,9 +180,30 @@ union UType {
         template<typename Functor> void for_each(const Functor &func) {}
         unroller(UType &ref) {}
     };
+    template<size_t nleft, size_t done>
+    struct const_unroller {
+        const UType &ref_;
+        template<typename Functor>
+        void for_each(const Functor &func) {
+            func(ref_.arr_[COUNT - nleft]);
+            const_unroller<nleft - 1, done + 1> ur(ref_);
+            ur.for_each(func);
+        }
+        const_unroller(const UType &ref): ref_(ref) {}
+    };
+    template<size_t done>
+    struct const_unroller<0, done> {
+        template<typename Functor> void for_each(const Functor &func) {}
+        const_unroller(const UType &ref) {}
+    };
     template<typename Functor>
     void for_each(const Functor &func) {
         unroller<COUNT, 0> ur(*this);
+        ur.for_each(func);
+    }
+    template<typename Functor>
+    void for_each(const Functor &func) const {
+        const_unroller<COUNT, 0> ur(*this);
         ur.for_each(func);
     }
 };
