@@ -54,39 +54,40 @@ struct SIMDTypes;
 /* Use or separately because it's a keyword.*/
 
 #define declare_all(suf, sz) \
-   decop(loadu, suf, sz); \
-   decop(storeu, suf, sz); \
-   decop(load, suf, sz); \
-   decop(store, suf, sz); \
+   decop(loadu, suf, sz) \
+   decop(storeu, suf, sz) \
+   decop(load, suf, sz) \
+   decop(store, suf, sz) \
    static constexpr decltype(&OP(or, suf, sz)) or_fn = &OP(or, suf, sz);\
    static constexpr decltype(&OP(and, suf, sz)) and_fn = &OP(and, suf, sz);\
-   decop(add, suf, sz); \
-   decop(sub, suf, sz); \
-   decop(mul, suf, sz); \
-   decop(set1, suf, sz); \
-   decop(setr, suf, sz); \
-   decop(set, suf, sz); \
-   decop(mask_and, suf, sz); \
-   decop(maskz_and, suf, sz); \
-   decop(maskz_andnot, suf, sz); \
-   decop(mask_andnot, suf, sz); \
-   decop(andnot, suf, sz); \
-   decop(blendv, suf, sz); \
-   decop(cmp, suf, sz); \
+   decop(add, suf, sz) \
+   decop(sub, suf, sz) \
+   decop(mul, suf, sz) \
+   decop(set1, suf, sz) \
+   decop(setr, suf, sz) \
+   decop(set, suf, sz) \
+   decop(mask_and, suf, sz) \
+   decop(maskz_and, suf, sz) \
+   decop(maskz_andnot, suf, sz) \
+   decop(mask_andnot, suf, sz) \
+   decop(andnot, suf, sz) \
+   decop(blendv, suf, sz) \
+   decop(cmp, suf, sz) \
 
 #define declare_int_ls(suf, sz) \
-    decop(loadu, si##sz, sz); \
-    decop(load, si##sz, sz); \
-    decop(storeu, si##sz, sz); \
-    decop(store, si##sz, sz);
+    decop(loadu, si##sz, sz) \
+    decop(load, si##sz, sz) \
+    decop(storeu, si##sz, sz) \
+    decop(store, si##sz, sz)
 
 #define declare_int_epi64(sz) \
-    decop(slli, epi64, sz); \
-    decop(srli, epi64, sz); \
-    decop(add, epi64, sz); \
-    decop(sub, epi64, sz); \
-    /*static constexpr decltype(&OP(xor, epi64, sz)) xor_fn = &OP(xor, epi64, sz); */\
-    decop(set1, epi64x, sz);
+    decop(slli, epi64, sz) \
+    decop(srli, epi64, sz) \
+    decop(add, epi64, sz) \
+    decop(sub, epi64, sz) \
+    decop(mullo, epi64, sz) \
+    static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
+    decop(set1, epi64x, sz)
 
 #define declare_all_int(suf, sz) \
     declare_int_ls(suf, sz) \
@@ -145,9 +146,49 @@ struct SIMDTypes;
 
 #endif // #ifndef NO_SLEEF
     
+template<typename SType>
+union UType {
+    using ValueType = typename SType::ValueType;
+    using Type =      typename SType::Type;
+    static constexpr size_t COUNT = SType::COUNT;
+    std::array<ValueType, COUNT> arr_;
+    Type                        simd_;
+    UType(Type val): simd_(val) {}
+    UType(ValueType val): simd_(SType::set1(val)) {}
+    UType() {}
+    UType &operator=(Type val) {
+        simd_ = val;
+        return *this;
+    }
+    UType &operator=(ValueType val) {
+        simd_ = SType::set1(val);
+        return *this;
+    }
+    template<size_t nleft, size_t done>
+    struct unroller {
+        UType &ref_;
+        template<typename Functor>
+        void for_each(const Functor &func) {
+            func(ref_.arr_[COUNT - nleft]);
+            unroller<nleft - 1, done + 1> ur(ref_);
+            ur.for_each(func);
+        }
+        unroller(UType &ref): ref_(ref) {}
+    };
+    template<size_t done>
+    struct unroller<0, done> {
+        template<typename Functor> void for_each(const Functor &func) {}
+        unroller(UType &ref) {}
+    };
+    template<typename Functor>
+    void for_each(const Functor &func) {
+        unroller<COUNT, 0> ur(*this);
+        ur.for_each(func);
+    }
+};
 
 template<>
-struct SIMDTypes<uint64_t>{
+struct SIMDTypes<uint64_t> {
     using ValueType = uint64_t;
 #if _FEATURE_AVX512F
     using Type = __m512i;
@@ -168,15 +209,7 @@ struct SIMDTypes<uint64_t>{
     static constexpr bool aligned(T *ptr) {
         return (reinterpret_cast<uint64_t>(ptr) & MASK) == 0;
     }
-    union VType {
-        std::array<ValueType, COUNT> arr_;
-        Type                        simd_;
-        VType(Type val): simd_(val) {}
-        VType &operator=(Type val) {
-            simd_ = val;
-            return *this;
-        }
-    };
+    using VType = UType<SIMDTypes<ValueType>>;
 };
 
 template<>
@@ -213,6 +246,7 @@ struct SIMDTypes<float>{
     static constexpr bool aligned(T *ptr) {
         return (reinterpret_cast<uint64_t>(ptr) & MASK) == 0;
     }
+    using VType = UType<SIMDTypes<ValueType>>;
 };
 
 template<>
@@ -249,6 +283,7 @@ struct SIMDTypes<double>{
     static constexpr bool aligned(T *ptr) {
         return (reinterpret_cast<uint64_t>(ptr) & MASK) == 0;
     }
+    using VType = UType<SIMDTypes<ValueType>>;
 };
 
 
