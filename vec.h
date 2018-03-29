@@ -206,6 +206,12 @@ union UType {
         const_unroller<COUNT, 0> ur(*this);
         ur.for_each(func);
     }
+    auto sum() const {
+        ValueType ret = arr_[0];
+        for(uint8_t i = 1; i < COUNT; ++i)
+            ret += arr_[i];
+        return ret;
+    }
 };
 
 template<>
