@@ -80,6 +80,12 @@ struct SIMDTypes;
     decop(storeu, si##sz, sz) \
     decop(store, si##sz, sz)
 
+#define declare_int_ls128(suf, sz) \
+    decop(loadu, si128, sz) \
+    decop(load, si128, sz) \
+    decop(storeu, si128, sz) \
+    decop(store, si128, sz)
+
 #define declare_int_epi64(sz) \
     decop(slli, epi64, sz) \
     decop(srli, epi64, sz) \
@@ -89,9 +95,22 @@ struct SIMDTypes;
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
     decop(set1, epi64x, sz)
 
+#define declare_int_epi64_128(sz) \
+    decop(slli, epi64, sz) \
+    decop(srli, epi64, sz) \
+    decop(add, epi64, sz) \
+    decop(sub, epi64, sz) \
+    decop(mullo, epi64, sz) \
+    static constexpr decltype(&OP(xor, si128, sz)) xor_fn = &OP(xor, si128, sz);\
+    decop(set1, epi64x, sz)
+
 #define declare_all_int(suf, sz) \
     declare_int_ls(suf, sz) \
     declare_int_epi64(sz)
+
+#define declare_all_int128(suf, sz) \
+    declare_int_ls128(suf, sz) \
+    declare_int_epi64_128(sz)
 
 #ifndef NO_SLEEF
 
@@ -225,7 +244,7 @@ struct SIMDTypes<uint64_t> {
     declare_all_int(epi64, 256)
 #elif __SSE2__
     using Type = __m128i;
-    declare_all_int(epi64,)
+    declare_all_int128(epi64,)
 #else
 #error("Need at least sse2")
 #endif
