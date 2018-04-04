@@ -183,6 +183,22 @@ union UType {
         simd_ = SType::set1(val);
         return *this;
     }
+    UType &operator+=(Type val) {
+        simd_ += val;
+        return *this;
+    }
+    UType &operator+=(ValueType val) {
+        simd_ += SType::set1(val);
+        return *this;
+    }
+    UType &operator-=(Type val) {
+        simd_ -= val;
+        return *this;
+    }
+    UType &operator-=(ValueType val) {
+        simd_ -= SType::set1(val);
+        return *this;
+    }
     template<size_t nleft, size_t done>
     struct unroller {
         UType &ref_;
