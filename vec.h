@@ -93,6 +93,8 @@ struct SIMDTypes;
     decop(sub, epi64, sz) \
     decop(mullo, epi64, sz) \
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
+    static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
+    static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
     decop(set1, epi64x, sz)
 
 #define declare_int_epi64_128(sz) \
@@ -102,6 +104,8 @@ struct SIMDTypes;
     decop(sub, epi64, sz) \
     decop(mullo, epi64, sz) \
     static constexpr decltype(&OP(xor, si128, sz)) xor_fn = &OP(xor, si128, sz);\
+    static constexpr decltype(&OP(and, si128, sz)) and_fn = &OP(and, si128, sz);\
+    static constexpr decltype(&OP(or, si128, sz))  or_fn = &OP(or, si128, sz);\
     decop(set1, epi64x, sz)
 
 #define declare_all_int(suf, sz) \
