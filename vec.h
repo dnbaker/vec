@@ -481,6 +481,19 @@ void block_apply(Container &con, const Functor &func=Functor{}) {
 #endif
 }
 
+template<typename T, typename SizeType=std::size_t>
+void memblockset(void *dest, T val, SizeType nbytes) {
+    using S = SIMDTypes<uint64_t>;
+    using SType = typename SType::Type;
+    SType sv;
+    {
+        T *s((T *)&sv), *s2((T *)(((char *)&sv) + sizeof(sv)));
+        while(s < s2) *s++ = sv;
+    }
+    if(S::aligned(dest)) for(SType *s = (SType *)dest, *e = (SType *)((char *)dest + nbytes); s < e; *s++ = sv;
+    else for(SType *s = (SType *)dest, *e = (SType *)((char *)dest + nbytes); s < e; S::storeu(s++, sv));
+}
+
 } // namespace vec
 #ifndef NO_SLEEF
 #undef OP
