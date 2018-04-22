@@ -19,10 +19,17 @@ double mean(const Container &c) {
     VType tmp, tsum = 0;
     const VType *ptr = (const VType *)&*std::cbegin(c);
     auto eptr = &*std::end(c);
-    do {
-        tmp.simd_ = Space::loadu((const Type *)ptr++);
-        tsum.simd_ = Space::add(tsum.simd_, tmp.simd_);
-    } while(ptr < (const VType *)eptr);
+    if(Space::aligned(ptr)) {
+        do {
+            tmp.simd_ = Space::load((const Type *)ptr++);
+            tsum.simd_ = Space::add(tsum.simd_, tmp.simd_);
+        } while(ptr < (const VType *)eptr);
+    } else {
+        do {
+            tmp.simd_ = Space::loadu((const Type *)ptr++);
+            tsum.simd_ = Space::add(tsum.simd_, tmp.simd_);
+        } while(ptr < (const VType *)eptr);
+    }
     Type ret = tmp.sum();
     auto lptr = (const Type *)ptr;
     while(lptr < eptr) ret += *lptr++;
