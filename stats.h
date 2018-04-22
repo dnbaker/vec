@@ -9,13 +9,15 @@
 #endif
 
 namespace stats {
+using namespace std::literals;
 
 template<typename Container>
-double mean(const Container &c) {
-    // If this saturates the type, this result will be wrong.
+auto sum(const Container &c) {
     using Type = std::decay_t<decltype(c[0])>;
     using Space = vec::SIMDTypes<Type>;
     using VType = typename Space::VType;
+    if(__builtin_expect(c.size() == 0, 0)) return static_cast<Type>(0);
+    // If this saturates the type, this result will be wrong.
     VType tmp, tsum = 0;
     const VType *ptr = (const VType *)&*std::cbegin(c);
     auto eptr = &*std::end(c);
@@ -33,15 +35,21 @@ double mean(const Container &c) {
     Type ret = tmp.sum();
     auto lptr = (const Type *)ptr;
     while(lptr < eptr) ret += *lptr++;
-    return static_cast<double>(ret) / std::size(c);
+    return ret;
 }
+
+template<typename Container>
+double mean(const Container &c) {
+    return c.size() ? static_cast<double>(sum(c)) / c.size(): std::nan("");
+}
+
 
 template<typename Container>
 auto pearsonr(const Container &c1, const Container &c2) {
     using FType = std::decay_t<decltype(c1[0])>;
     static_assert(std::is_floating_point_v<FType>, "Containers must hold floating points.");
     if(c1.size() != c2.size())
-        throw std::runtime_error("Wrong sizes\n");
+        throw std::runtime_error("Wrong sizes. size1: "s + std::to_string(c1.size()) + ", " + std::to_string(c2.size()));
     using Space = vec::SIMDTypes<FType>;
     using VType = typename Space::VType;
     auto m1 = mean(c1), m2 = mean(c2);
