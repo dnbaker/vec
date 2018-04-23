@@ -1,6 +1,7 @@
 #pragma once
 #include "vec.h"
 #include <stdexcept>
+#include <limits>
 
 #ifdef _BLAZE_CONFIG_CONFIG_H_
 #define HAS_BLAZE 1
@@ -38,9 +39,9 @@ auto sum(const Container &c) {
     return ret;
 }
 
-template<typename Container>
-double mean(const Container &c) {
-    return c.size() ? static_cast<double>(sum(c)) / c.size(): std::nan("");
+template<typename Container, typename FloatType=double>
+FloatType mean(const Container &c) {
+    return c.size() ? static_cast<FloatType>(sum(c)) / c.size(): std::numeric_limits<FloatType>::quiet_NAN();
 }
 
 
@@ -86,7 +87,7 @@ auto pearsonr(const Container &c1, const Container &c2) {
         s2s += v2 * v2;
     }
     auto rden = std::sqrt(s1s) * std::sqrt(s2s); // two square roots for better floating-point accuracy.
-    return std::min(std::max(sd / rden, FType(-1.)), FType(1.));
+    return rden ? std::min(std::max(sd / rden, FType(-1.)), FType(1.)): std::numeric_limits<FType>::quiet_NAN();
 }
 
 
