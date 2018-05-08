@@ -27,6 +27,9 @@
 #ifndef IS_CONTIGUOUS_UNCOMPRESSED_BLAZE
 #  define IS_CONTIGUOUS_UNCOMPRESSED_BLAZE(x) (IS_BLAZE(x) && !IS_COMPRESSED_BLAZE(x) && IS_CONTIGUOUS_BLAZE(x))
 #endif
+#ifndef HAS_AVX_512
+#  define HAS_AVX_512 (_FEATURE_AVX512F || _FEATURE_AVX512ER || _FEATURE_AVX512PF || _FEATURE_AVX512CD || __AVX512BW__ || __AVX512CD__ || __AVX512F__)
+#endif
 
 namespace vec {
 
@@ -58,21 +61,21 @@ struct SIMDTypes;
    decop(storeu, suf, sz) \
    decop(load, suf, sz) \
    decop(store, suf, sz) \
+   static constexpr decltype(&_mm##sz##_cmp_##suf##_mask) cmp_mask_fn = &_mm##sz##_cmp_##suf##_mask; \
    static constexpr decltype(&OP(or, suf, sz)) or_fn = &OP(or, suf, sz);\
    static constexpr decltype(&OP(and, suf, sz)) and_fn = &OP(and, suf, sz);\
    decop(add, suf, sz) \
    decop(sub, suf, sz) \
    decop(mul, suf, sz) \
    decop(set1, suf, sz) \
-   decop(setr, suf, sz) \
+   /*decop(setr, suf, sz) */\
    decop(set, suf, sz) \
    decop(mask_and, suf, sz) \
    decop(maskz_and, suf, sz) \
    decop(maskz_andnot, suf, sz) \
    decop(mask_andnot, suf, sz) \
    decop(andnot, suf, sz) \
-   decop(blendv, suf, sz) \
-   decop(cmp, suf, sz) \
+   /*decop(blendv, suf, sz) */
 
 #define declare_int_ls(suf, sz) \
     decop(loadu, si##sz, sz) \
@@ -97,6 +100,17 @@ struct SIMDTypes;
     static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
     decop(set1, epi64x, sz)
 
+#define declare_int_epi64_512(sz) \
+    decop(slli, epi64, sz) \
+    decop(srli, epi64, sz) \
+    decop(add, epi64, sz) \
+    decop(sub, epi64, sz) \
+    decop(mullo, epi64, sz) \
+    static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
+    static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
+    static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
+    decop(set1, epi64, sz)
+
 #define declare_int_epi64_128(sz) \
     decop(slli, epi64, sz) \
     decop(srli, epi64, sz) \
@@ -115,6 +129,11 @@ struct SIMDTypes;
 #define declare_all_int128(suf, sz) \
     declare_int_ls128(suf, sz) \
     declare_int_epi64_128(sz)
+
+#define declare_all_int512(suf, sz) \
+    declare_int_ls(suf, sz) \
+    declare_int_epi64_512(sz)
+
 
 #ifndef NO_SLEEF
 
@@ -172,7 +191,7 @@ struct SIMDTypes;
 template<typename SType>
 union UType {
     using ValueType = typename SType::ValueType;
-    using Type =      typename SType::Type;
+    using Type      = typename SType::Type;
     static constexpr size_t COUNT = SType::COUNT;
     std::array<ValueType, COUNT> arr_;
     Type                        simd_;
@@ -256,9 +275,9 @@ union UType {
 template<>
 struct SIMDTypes<uint64_t> {
     using ValueType = uint64_t;
-#if _FEATURE_AVX512F
+#if HAS_AVX_512
     using Type = __m512i;
-    declare_all_int(epi64, 512)
+    declare_all_int512(epi64, 512)
 #elif __AVX2__
     using Type = __m256i;
     declare_all_int(epi64, 256)
@@ -281,7 +300,7 @@ struct SIMDTypes<uint64_t> {
 template<>
 struct SIMDTypes<float>{
     using ValueType = float;
-#if _FEATURE_AVX512F
+#if HAS_AVX_512
     using Type = __m512;
     declare_all(ps, 512)
 #ifndef NO_SLEEF
@@ -318,7 +337,7 @@ struct SIMDTypes<float>{
 template<>
 struct SIMDTypes<double>{
     using ValueType = double;
-#if _FEATURE_AVX512F
+#if HAS_AVX_512
     using Type = __m512d;
     declare_all(pd, 512)
 #ifndef NO_SLEEF
@@ -355,7 +374,7 @@ struct SIMDTypes<double>{
 
 template<typename FloatType>
 void blockmul(FloatType *pos, size_t nelem, FloatType prod) {
-#if __AVX2__ || _FEATURE_AVX512F || __SSE2__
+#if __AVX2__ || HAS_AVX_512 || __SSE2__
         using SIMDType = typename SIMDTypes<FloatType>::Type;
         using Space = SIMDTypes<FloatType>;
         SIMDType factor(SIMDTypes<FloatType>::set1(prod));
@@ -392,7 +411,7 @@ void block##op(Container &con, double val) {\
 
 template<typename FloatType>
 void blockadd(FloatType *pos, size_t nelem, FloatType val) {
-#if __AVX2__ || _FEATURE_AVX512F || __SSE2__
+#if __AVX2__ || HAS_AVX_512 || __SSE2__
         using SIMDType = typename SIMDTypes<FloatType>::Type;
         using Space = SIMDTypes<FloatType>;
         SIMDType inc(SIMDTypes<FloatType>::set1(val));
@@ -435,7 +454,7 @@ BLOCKOP(add, el += val)
 
 template<typename FloatType>
 void vecmul(FloatType *to, const FloatType *from, size_t nelem) {
-#if __AVX2__ || _FEATURE_AVX512F || __SSE2__
+#if __AVX2__ || HAS_AVX_512 || __SSE2__
         using SIMDType = typename SIMDTypes<FloatType>::Type;
         using Space = SIMDTypes<FloatType>;
         SIMDType *ptr((SIMDType *)to), *fromptr((SIMDType *)from);
@@ -459,7 +478,7 @@ void vecmul(FloatType *to, const FloatType *from, size_t nelem) {
 
 template<typename FloatType, typename Functor>
 void block_apply(FloatType *pos, size_t nelem, const Functor &func=Functor{}) {
-#if __AVX2__ || _FEATURE_AVX512F || __SSE2__
+#if __AVX2__ || HAS_AVX_512 || __SSE2__
         using Space = SIMDTypes<FloatType>;
         using SIMDType = typename Space::Type;
         SIMDType *ptr((SIMDType *)pos);
