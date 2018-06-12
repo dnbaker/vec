@@ -231,6 +231,30 @@ union UType {
             unroller<nleft - 1, done + 1> ur(ref_);
             ur.for_each(func);
         }
+        template<typename Functor, typename AccumType>
+        decltype(auto) accumulate(const Functor &func, AccumType val=AccumType()) {
+            val = func(ref_.arr_[COUNT - nleft], val);
+            unroller<nleft - 1, done + 1> ur(ref_);
+            return ur.accumulate(func, val);
+        }
+        template<typename Functor, typename AccumType>
+        decltype(auto) accumulate(const Functor &func, AccumType &val) {
+            val = func(ref_.arr_[COUNT - nleft], val);
+            unroller<nleft - 1, done + 1> ur(ref_);
+            return ur.accumulate(func, val);
+        }
+        template<typename Functor, typename AccumType>
+        decltype(auto) accumulate(const Functor &func, AccumType val=AccumType()) const {
+            val = func(ref_.arr_[COUNT - nleft], val);
+            unroller<nleft - 1, done + 1> ur(ref_);
+            return ur.accumulate(func, val);
+        }
+        template<typename Functor, typename AccumType>
+        decltype(auto) accumulate(const Functor &func, AccumType &val) const {
+            val = func(ref_.arr_[COUNT - nleft], val);
+            unroller<nleft - 1, done + 1> ur(ref_);
+            return ur.accumulate(func, val);
+        }
         unroller(UType &ref): ref_(ref) {}
     };
     template<size_t done>
