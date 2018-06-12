@@ -402,22 +402,22 @@ void blockmul(FloatType *pos, size_t nelem, FloatType prod) {
         using SIMDType = typename SIMDTypes<FloatType>::Type;
         using Space = SIMDTypes<FloatType>;
         SIMDType factor(SIMDTypes<FloatType>::set1(prod));
-        SIMDType *ptr((SIMDType *)pos);
+        SIMDType *ptr(reinterpret_cast<SIMDType *>(pos));
         FloatType *end(pos + nelem);
         if(!Space::aligned(ptr)) {
-            while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType)) {
-                Space::storeu((FloatType *)ptr,
-                    Space::mul(factor, Space::loadu((FloatType *)ptr)));
+            while(reinterpret_cast<FloatType *>(ptr) < end - sizeof(SIMDType) / sizeof(FloatType)) {
+                Space::storeu(reinterpret_cast<FloatType *>(ptr),
+                    Space::mul(factor, Space::loadu(reinterpret_cast<FloatType *>(ptr))));
                 ++ptr;
             }
         } else {
-            while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType)) {
-                Space::store((FloatType *)ptr,
-                    Space::mul(factor, Space::load((FloatType *)ptr)));
+            while(reinterpret_cast<FloatType *>(ptr) < end - sizeof(SIMDType) / sizeof(FloatType)) {
+                Space::store(reinterpret_cast<FloatType *>(ptr),
+                    Space::mul(factor, Space::load(reinterpret_cast<FloatType *>(ptr))));
                 ++ptr;
             }
         }
-        pos = (FloatType *)ptr;
+        pos = reinterpret_cast<FloatType *>(ptr);
         while(pos < end) *pos++ *= prod;
 #else
             for(size_t i(0); i < (static_cast<size_t>(1) << nelem); ++i) pos[i] *= prod; // Could be vectorized.
@@ -439,17 +439,17 @@ void blockadd(FloatType *pos, size_t nelem, FloatType val) {
         using SIMDType = typename SIMDTypes<FloatType>::Type;
         using Space = SIMDTypes<FloatType>;
         SIMDType inc(SIMDTypes<FloatType>::set1(val));
-        SIMDType *ptr((SIMDType *)pos);
+        SIMDType *ptr(reinterpret_cast<SIMDType *>(pos));
         FloatType *end(pos + nelem);
         if(!Space::aligned(ptr))
-            while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType))
-                Space::storeu((FloatType *)ptr,
-                    Space::add(inc, Space::loadu((FloatType *)ptr))), ++ptr;
+            while(reinterpret_cast<FloatType *>(ptr) < end - sizeof(SIMDType) / sizeof(FloatType))
+                Space::storeu(reinterpret_cast<FloatType *>(ptr),
+                    Space::add(inc, Space::loadu(reinterpret_cast<FloatType *>(ptr)))), ++ptr;
         else
-            while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType))
-                Space::store((FloatType *)ptr,
-                    Space::add(inc, Space::load((FloatType *)ptr))), ++ptr;
-        pos = (FloatType *)ptr;
+            while(reinterpret_cast<FloatType *>(ptr) < end - sizeof(SIMDType) / sizeof(FloatType))
+                Space::store(reinterpret_cast<FloatType *>(ptr),
+                    Space::add(inc, Space::load(reinterpret_cast<FloatType *>(ptr)))), ++ptr;
+        pos = reinterpret_cast<FloatType *>(ptr);
         while(pos < end) *pos++ += val;
 #else
             for(size_t i(0); i < (static_cast<size_t>(1) << nelem); ++i) pos[i] += val; // Could be vectorized.
@@ -481,19 +481,19 @@ void vecmul(FloatType *to, const FloatType *from, size_t nelem) {
 #if __AVX2__ || HAS_AVX_512 || __SSE2__
         using SIMDType = typename SIMDTypes<FloatType>::Type;
         using Space = SIMDTypes<FloatType>;
-        SIMDType *ptr((SIMDType *)to), *fromptr((SIMDType *)from);
+        SIMDType *ptr(reinterpret_cast<SIMDType *>(to)), *fromptr(reinterpret_cast<SIMDType *>(from));
         FloatType *end(to + nelem);
         if(!(Space::aligned(ptr) && Space::aligned(fromptr)))
-            while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType))
-                Space::storeu((FloatType *)ptr,
-                    Space::mul(Space::loadu((FloatType *)fromptr), Space::loadu((FloatType *)ptr))),
+            while(reinterpret_cast<FloatType *>(ptr) < end - sizeof(SIMDType) / sizeof(FloatType))
+                Space::storeu(reinterpret_cast<FloatType *>(ptr),
+                    Space::mul(Space::loadu(reinterpret_cast<FloatType *>(fromptr)), Space::loadu(reinterpret_cast<FloatType *>(ptr)))),
                 ++ptr, ++fromptr;
         else
-            while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType))
-                Space::store((FloatType *)ptr,
-                    Space::mul(Space::load((FloatType *)fromptr), Space::load((FloatType *)ptr))),
+            while(reinterpret_cast<FloatType *>(ptr) < end - sizeof(SIMDType) / sizeof(FloatType))
+                Space::store(reinterpret_cast<FloatType *>(ptr),
+                    Space::mul(Space::load(reinterpret_cast<FloatType *>(fromptr)), Space::load(reinterpret_cast<FloatType *>(ptr)))),
                 ++ptr, ++fromptr;
-        to = (FloatType *)ptr, from = (FloatType *)fromptr;
+        to = reinterpret_cast<FloatType *>(ptr), from = reinterpret_cast<FloatType *>(fromptr);
         while(to < end) *to++ *= *from++;
 #else
         DO_DUFF(nelem, *to++ *= *from++);
@@ -505,22 +505,22 @@ void block_apply(FloatType *pos, size_t nelem, const Functor &func=Functor{}) {
 #if __AVX2__ || HAS_AVX_512 || __SSE2__
         using Space = SIMDTypes<FloatType>;
         using SIMDType = typename Space::Type;
-        SIMDType *ptr((SIMDType *)pos);
+        SIMDType *ptr(reinterpret_cast<SIMDType *>(pos));
         FloatType *end(pos + nelem);
         if(!Space::aligned(ptr)) {
-            while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType)) {
-                Space::storeu((FloatType *)ptr,
-                    func(Space::loadu((FloatType *)ptr)));
+            while(reinterpret_cast<FloatType *>(ptr) < end - sizeof(SIMDType) / sizeof(FloatType)) {
+                Space::storeu(reinterpret_cast<FloatType *>(ptr),
+                    func(Space::loadu(reinterpret_cast<FloatType *>(ptr))));
                 ++ptr;
             }
         } else {
-            while((FloatType *)ptr < end - sizeof(SIMDType) / sizeof(FloatType)) {
-                Space::store((FloatType *)ptr,
-                    func(Space::load((FloatType *)ptr)));
+            while(reinterpret_cast<FloatType *>(ptr) < end - sizeof(SIMDType) / sizeof(FloatType)) {
+                Space::store(reinterpret_cast<FloatType *>(ptr),
+                    func(Space::load(reinterpret_cast<FloatType *>(ptr))));
                 ++ptr;
             }
         }
-        pos = (FloatType *)ptr;
+        pos = reinterpret_cast<FloatType *>(ptr);
         while(pos < end) *pos  = func.scalar(*pos), ++pos;
 #else
             for(size_t i(0); i < (static_cast<size_t>(1) << nelem); ++i) to[i] *= func.scalar(to[i]); // Could be vectorized.
@@ -550,11 +550,11 @@ void memblockset(void *dest, T val, SizeType nbytes) {
     using SType = typename S::Type;
     SType sv;
     {
-        T *s((T *)&sv), *s2((T *)(((char *)&sv) + sizeof(sv)));
+        T *s(reinterpret_cast<T *>(&sv)), *s2(reinterpret_cast<T *>(((reinterpret_cast<char *>(&sv)) + sizeof(sv))));
         while(s < s2) *s++ = val;
     }
-    if(S::aligned(dest)) for(SType *s = (SType *)dest, *e = (SType *)((char *)dest + nbytes); s < e; *s++ = sv);
-    else for(SType *s = (SType *)dest, *e = (SType *)((char *)dest + nbytes); s < e; S::storeu(s++, sv));
+    if(S::aligned(dest)) for(SType *s = static_cast<SType *>(dest), *e = reinterpret_cast<SType *>(static_cast<char *>(dest) + nbytes); s < e; *s++ = sv);
+    else for(SType *s = static_cast<SType *>(dest), *e = reinterpret_cast<SType *>(static_cast<char *>(dest) + nbytes); s < e; S::storeu(s++, sv));
 }
 
 } // namespace vec
