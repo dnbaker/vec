@@ -41,7 +41,7 @@ auto sum(const Container &c) {
 
 template<typename Container, typename FloatType=double>
 FloatType mean(const Container &c) {
-    return c.size() ? static_cast<FloatType>(sum(c)) / c.size(): std::numeric_limits<FloatType>::quiet_NAN();
+    return c.size() ? static_cast<FloatType>(sum(c)) / c.size(): std::numeric_limits<FloatType>::quiet_NaN();
 }
 
 
