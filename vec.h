@@ -481,19 +481,20 @@ void vecmul(FloatType *to, const FloatType *from, size_t nelem) {
 #if __AVX2__ || HAS_AVX_512 || __SSE2__
         using SIMDType = typename SIMDTypes<FloatType>::Type;
         using Space = SIMDTypes<FloatType>;
-        SIMDType *ptr(reinterpret_cast<SIMDType *>(to)), *fromptr(reinterpret_cast<SIMDType *>(from));
+        SIMDType *ptr(reinterpret_cast<SIMDType *>(to));
+        const SIMDType *fromptr(reinterpret_cast<const SIMDType *>(from));
         FloatType *end(to + nelem);
         if(!(Space::aligned(ptr) && Space::aligned(fromptr)))
             while(reinterpret_cast<FloatType *>(ptr) < end - sizeof(SIMDType) / sizeof(FloatType))
                 Space::storeu(reinterpret_cast<FloatType *>(ptr),
-                    Space::mul(Space::loadu(reinterpret_cast<FloatType *>(fromptr)), Space::loadu(reinterpret_cast<FloatType *>(ptr)))),
+                    Space::mul(Space::loadu(reinterpret_cast<const FloatType *>(fromptr)), Space::loadu(reinterpret_cast<FloatType *>(ptr)))),
                 ++ptr, ++fromptr;
         else
             while(reinterpret_cast<FloatType *>(ptr) < end - sizeof(SIMDType) / sizeof(FloatType))
                 Space::store(reinterpret_cast<FloatType *>(ptr),
-                    Space::mul(Space::load(reinterpret_cast<FloatType *>(fromptr)), Space::load(reinterpret_cast<FloatType *>(ptr)))),
+                    Space::mul(Space::load(reinterpret_cast<const FloatType *>(fromptr)), Space::load(reinterpret_cast<FloatType *>(ptr)))),
                 ++ptr, ++fromptr;
-        to = reinterpret_cast<FloatType *>(ptr), from = reinterpret_cast<FloatType *>(fromptr);
+        to = reinterpret_cast<FloatType *>(ptr), from = reinterpret_cast<const FloatType *>(fromptr);
         while(to < end) *to++ *= *from++;
 #else
         DO_DUFF(nelem, *to++ *= *from++);
