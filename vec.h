@@ -329,21 +329,21 @@ struct SIMDTypes<float>{
     declare_all(ps, 512)
 #ifndef NO_SLEEF
     dec_double_sz(__m512)
-    dec_all_trig(f16, avx512f);
+    dec_all_trig(f16, avx512f)
 #endif // #ifndef NO_SLEEF
 #elif __AVX2__
     using Type = __m256;
     declare_all(ps, 256)
 #ifndef NO_SLEEF
     dec_double_sz(__m256)
-    dec_all_trig(f8, avx2);
+    dec_all_trig(f8, avx2)
 #endif // #ifndef NO_SLEEF
 #elif __SSE2__
     using Type = __m128;
     declare_all(ps, )
 #ifndef NO_SLEEF
     dec_double_sz(__m128)
-    dec_all_trig(f4, sse2);
+    dec_all_trig(f4, sse2)
 #endif // #ifndef NO_SLEEF
 #else
 #error("Need at least sse2")
@@ -365,22 +365,22 @@ struct SIMDTypes<double>{
     using Type = __m512d;
     declare_all(pd, 512)
 #ifndef NO_SLEEF
-    dec_double_sz(__m512d);
-    dec_all_trig(d8, avx512f);
+    dec_double_sz(__m512d)
+    dec_all_trig(d8, avx512f)
 #endif // #ifndef NO_SLEEF
 #elif __AVX2__
     using Type = __m256d;
     declare_all(pd, 256)
 #ifndef NO_SLEEF
-    dec_double_sz(__m256d);
-    dec_all_trig(d4, avx2);
+    dec_double_sz(__m256d)
+    dec_all_trig(d4, avx2)
 #endif // #ifndef NO_SLEEF
 #elif __SSE2__
     using Type = __m128d;
     declare_all(pd, )
 #ifndef NO_SLEEF
-    dec_double_sz(__m128d);
-    dec_all_trig(d2, sse2);
+    dec_double_sz(__m128d)
+    dec_all_trig(d2, sse2)
 #endif // #ifndef NO_SLEEF
 #else
 #error("Need at least sse2")
