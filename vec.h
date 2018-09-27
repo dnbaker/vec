@@ -31,6 +31,26 @@
 #  define HAS_AVX_512 (_FEATURE_AVX512F || _FEATURE_AVX512ER || _FEATURE_AVX512PF || _FEATURE_AVX512CD || __AVX512BW__ || __AVX512CD__ || __AVX512F__)
 #endif
 
+#ifndef VECTOR_WIDTH
+#  if HAS_AVX_512
+#    define VECTOR_WIDTH 64u
+#  elif __AVX2__
+#    define VECTOR_WIDTH 32u
+#  elif __SSE2__
+#    define VECTOR_WIDTH 16u
+#  else
+#    error("Require at least SSE2")
+#  endif
+#endif
+
+#ifndef INLINE
+#  if __GNUC__ || __clang__
+#    define INLINE __attribute__((always_inline)) inline
+#  else
+#    define INLINE inline
+#  endif
+#endif
+
 namespace vec {
 
 using std::uint64_t;
@@ -47,6 +67,33 @@ namespace scalar {
     template<typename T> auto sqrt_u05(T val) {return sqrt(val);}
 }
 #endif // #ifndef NO_SLEEF
+
+#if __SSE2__
+// From https://stackoverflow.com/questions/17863411/sse-multiplication-of-2-64-bit-integers
+INLINE __m128i _mm_mul_epi64(__m128i a, __m128i b)
+{
+    auto ax0_ax1_ay0_ay1 = a;
+    auto bx0_bx1_by0_by1 = b;
+
+    auto ax1_i_ay1_i = _mm_shuffle_epi32(ax0_ax1_ay0_ay1, _MM_SHUFFLE(3, 3, 1, 1));
+    auto bx1_i_by1_i = _mm_shuffle_epi32(bx0_bx1_by0_by1, _MM_SHUFFLE(3, 3, 1, 1));
+
+    auto ax0bx0_ay0by0 = _mm_mul_epi32(ax0_ax1_ay0_ay1, bx0_bx1_by0_by1);
+    auto ax0bx1_ay0by1 = _mm_mul_epi32(ax0_ax1_ay0_ay1, bx1_i_by1_i);
+    auto ax1bx0_ay1by0 = _mm_mul_epi32(ax1_i_ay1_i, bx0_bx1_by0_by1);
+
+    auto ax0bx1_ay0by1_32 = _mm_slli_epi64(ax0bx1_ay0by1, 32);
+    auto ax1bx0_ay1by0_32 = _mm_slli_epi64(ax1bx0_ay1by0, 32);
+
+    return _mm_add_epi64(ax0bx0_ay0by0, _mm_add_epi64(ax0bx1_ay0by1_32, ax1bx0_ay1by0_32));
+}
+
+INLINE __m128i _mm_mul_epi64x(__m128i a, uint64_t b)
+{
+    return _mm_mul_epi64(a, _mm_set1_epi64x(b));
+}
+#endif
+
 
 template<typename ValueType>
 struct SIMDTypes;
