@@ -68,6 +68,7 @@ namespace scalar {
 }
 #endif // #ifndef NO_SLEEF
 
+#if !(HAS_AVX_512)
 #if __SSE2__
 // From https://stackoverflow.com/questions/17863411/sse-multiplication-of-2-64-bit-integers
 INLINE __m128i _mm_mul_epi64(__m128i a, __m128i b)
@@ -91,6 +92,14 @@ INLINE __m128i _mm_mul_epi64(__m128i a, __m128i b)
 INLINE __m128i _mm_mul_epi64x(__m128i a, uint64_t b)
 {
     return _mm_mul_epi64(a, _mm_set1_epi64x(b));
+}
+#endif
+#if __AVX2__
+INLINE __m256i _mm_mullo_epi64(__m256i a, __m256i b) {
+    __m128i *p1 = (__m128i *)&a, *p2 = (__m128i *)&b;
+    *p1 = _mm_mul_epi64(*p1, *p2);
+    p1[1] = _mm_mul_epi64(p1[1], p2[1]);
+    return a;
 }
 #endif
 
