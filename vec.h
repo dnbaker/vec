@@ -165,8 +165,7 @@ struct SIMDTypes;
     decop(srli, epi64, sz) \
     decop(add, epi64, sz) \
     decop(sub, epi64, sz) \
-    decop(mullo, epi64, sz) \
-    static constexpr decltype(&OP(mullo, si128, sz)) mul = &OP(mullo, si128, sz);\
+    static constexpr decltype(&_mm_mul_epi64) mul = &_mm_mul_epi64;\
     static constexpr decltype(&OP(xor, si128, sz)) xor_fn = &OP(xor, si128, sz);\
     static constexpr decltype(&OP(and, si128, sz)) and_fn = &OP(and, si128, sz);\
     static constexpr decltype(&OP(or, si128, sz))  or_fn = &OP(or, si128, sz);\
