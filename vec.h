@@ -143,6 +143,7 @@ struct SIMDTypes;
     decop(sub, epi64, sz) \
     decop(mullo, epi64, sz) \
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
+    static constexpr decltype(&OP(mullo, epi64, sz)) mul = &OP(mullo, epi64, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
     static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
     decop(set1, epi64x, sz)
@@ -153,6 +154,7 @@ struct SIMDTypes;
     decop(add, epi64, sz) \
     decop(sub, epi64, sz) \
     decop(mullo, epi64, sz) \
+    static constexpr decltype(&OP(mullo, si##sz, sz)) mul = &OP(mullo, si##sz, sz);\
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
     static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
@@ -164,6 +166,7 @@ struct SIMDTypes;
     decop(add, epi64, sz) \
     decop(sub, epi64, sz) \
     decop(mullo, epi64, sz) \
+    static constexpr decltype(&OP(mullo, si128, sz)) mul = &OP(mullo, si128, sz);\
     static constexpr decltype(&OP(xor, si128, sz)) xor_fn = &OP(xor, si128, sz);\
     static constexpr decltype(&OP(and, si128, sz)) and_fn = &OP(and, si128, sz);\
     static constexpr decltype(&OP(or, si128, sz))  or_fn = &OP(or, si128, sz);\
@@ -242,9 +245,9 @@ union UType {
     static constexpr size_t COUNT = SType::COUNT;
     std::array<ValueType, COUNT> arr_;
     Type                        simd_;
-    UType(Type val): simd_(val) {}
-    UType(ValueType val): simd_(SType::set1(val)) {}
-    UType() {}
+    constexpr UType(Type val): simd_(val) {}
+    constexpr UType(ValueType val): simd_(SType::set1(val)) {}
+    constexpr UType() {}
     UType &operator=(Type val) {
         simd_ = val;
         return *this;
@@ -273,7 +276,7 @@ union UType {
     struct unroller {
         UType &ref_;
         template<typename Functor>
-        void for_each(const Functor &func) {
+        constexpr void for_each(const Functor &func) {
             func(ref_.arr_[COUNT - nleft]);
             unroller<nleft - 1, done + 1> ur(ref_);
             ur.for_each(func);
@@ -306,14 +309,14 @@ union UType {
     };
     template<size_t done>
     struct unroller<0, done> {
-        template<typename Functor> void for_each(const Functor &func) {}
+        template<typename Functor> constexpr void for_each(const Functor &func) {}
         unroller(UType &ref) {}
     };
     template<size_t nleft, size_t done>
     struct const_unroller {
         const UType &ref_;
         template<typename Functor>
-        void for_each(const Functor &func) {
+        constexpr void for_each(const Functor &func) {
             func(ref_.arr_[COUNT - nleft]);
             const_unroller<nleft - 1, done + 1> ur(ref_);
             ur.for_each(func);
@@ -322,16 +325,16 @@ union UType {
     };
     template<size_t done>
     struct const_unroller<0, done> {
-        template<typename Functor> void for_each(const Functor &func) {}
+        template<typename Functor> constexpr void for_each(const Functor &func) {}
         const_unroller(const UType &ref) {}
     };
     template<typename Functor>
-    void for_each(const Functor &func) {
+    constexpr void for_each(const Functor &func) {
         unroller<COUNT, 0> ur(*this);
         ur.for_each(func);
     }
     template<typename Functor>
-    void for_each(const Functor &func) const {
+    constexpr void for_each(const Functor &func) const {
         const_unroller<COUNT, 0> ur(*this);
         ur.for_each(func);
     }
