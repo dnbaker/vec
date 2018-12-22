@@ -102,6 +102,7 @@ INLINE __m256i _mm_mullo_epi64(__m256i a, __m256i b) {
     return a;
 }
 #endif
+#endif
 
 
 template<typename ValueType>
