@@ -93,16 +93,25 @@ INLINE __m128i _mm_mul_epi64x(__m128i a, uint64_t b)
 {
     return _mm_mul_epi64(a, _mm_set1_epi64x(b));
 }
-#endif
+#endif // __SSE2__ 
 #if __AVX2__
-INLINE __m256i _mm_mullo_epi64(__m256i a, __m256i b) {
-    __m128i *p1 = (__m128i *)&a, *p2 = (__m128i *)&b;
-    *p1 = _mm_mul_epi64(*p1, *p2);
-    p1[1] = _mm_mul_epi64(p1[1], p2[1]);
-    return a;
+INLINE __m256i _mm256_mullo_epi64 (__m256i a, __m256i b) {
+    // From https://stackoverflow.com/a/37320416 (https://stackoverflow.com/questions/37296289/fastest-way-to-multiply-an-array-of-int64-t)
+    // instruction does not exist. Split into 32-bit multiplies
+    __m256i bswap   = _mm256_shuffle_epi32(b,0xB1);           // swap H<->L
+    __m256i prodlh  = _mm256_mullo_epi32(a,bswap);            // 32 bit L*H products
+
+    // or use pshufb instead of psrlq to reduce port0 pressure on Haswell
+    __m256i prodlh2 = _mm256_srli_epi64(prodlh, 32);          // 0  , a0Hb0L,          0, a1Hb1L
+    __m256i prodlh3 = _mm256_add_epi32(prodlh2, prodlh);      // xxx, a0Lb0H+a0Hb0L, xxx, a1Lb1H+a1Hb1L
+    __m256i prodlh4 = _mm256_and_si256(prodlh3, _mm256_set1_epi64x(0x00000000FFFFFFFF)); // zero high halves
+
+    __m256i prodll  = _mm256_mul_epu32(a,b);                  // a0Lb0L,a1Lb1L, 64 bit unsigned products
+    __m256i prod    = _mm256_add_epi64(prodll,prodlh4);       // a0Lb0L+(a0Lb0H+a0Hb0L)<<32, a1Lb1L+(a1Lb1H+a1Hb1L)<<32
+    return  prod;
 }
-#endif
-#endif
+#endif // __AVX2__
+#endif // !(HAS_AVX_512)
 
 
 template<typename ValueType>
@@ -118,7 +127,6 @@ struct SIMDTypes;
    decop(storeu, suf, sz) \
    decop(load, suf, sz) \
    decop(store, suf, sz) \
-   static constexpr decltype(&_mm##sz##_cmp_##suf##_mask) cmp_mask_fn = &_mm##sz##_cmp_##suf##_mask; \
    static constexpr decltype(&OP(or, suf, sz)) or_fn = &OP(or, suf, sz);\
    static constexpr decltype(&OP(and, suf, sz)) and_fn = &OP(and, suf, sz);\
    decop(add, suf, sz) \
