@@ -554,8 +554,13 @@ void memblockset(void *dest, T val, SizeType nbytes) {
         T *s(reinterpret_cast<T *>(&sv)), *s2(reinterpret_cast<T *>(((reinterpret_cast<char *>(&sv)) + sizeof(sv))));
         while(s < s2) *s++ = val;
     }
-    if(S::aligned(dest)) for(SType *s = static_cast<SType *>(dest), *e = reinterpret_cast<SType *>(static_cast<char *>(dest) + nbytes); s < e; *s++ = sv);
-    else for(SType *s = static_cast<SType *>(dest), *e = reinterpret_cast<SType *>(static_cast<char *>(dest) + nbytes); s < e; S::storeu(s++, sv));
+#define DO_LOOP_(op) \
+    for(SType *s = static_cast<SType *>(dest), *e = reinterpret_cast<SType *>(static_cast<char *>(dest) + nbytes); s < e; S::op(s++, sv))
+    if(S::aligned(dest))
+        DO_LOOP_(store);
+    else
+        DO_LOOP_(storeu);
+#undef DO_LOOP_
 }
 
 } // namespace vec
