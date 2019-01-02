@@ -31,6 +31,26 @@
 #  define HAS_AVX_512 (_FEATURE_AVX512F || _FEATURE_AVX512ER || _FEATURE_AVX512PF || _FEATURE_AVX512CD || __AVX512BW__ || __AVX512CD__ || __AVX512F__)
 #endif
 
+#ifndef VECTOR_WIDTH
+#  if HAS_AVX_512
+#    define VECTOR_WIDTH 64u
+#  elif __AVX2__
+#    define VECTOR_WIDTH 32u
+#  elif __SSE2__
+#    define VECTOR_WIDTH 16u
+#  else
+#    error("Require at least SSE2")
+#  endif
+#endif
+
+#ifndef INLINE
+#  if __GNUC__ || __clang__
+#    define INLINE __attribute__((always_inline)) inline
+#  else
+#    define INLINE inline
+#  endif
+#endif
+
 namespace vec {
 
 using std::uint64_t;
@@ -48,6 +68,52 @@ namespace scalar {
 }
 #endif // #ifndef NO_SLEEF
 
+#if !(HAS_AVX_512)
+#if __SSE2__
+// From https://stackoverflow.com/questions/17863411/sse-multiplication-of-2-64-bit-integers
+INLINE __m128i _mm_mul_epi64(__m128i a, __m128i b)
+{
+    auto ax0_ax1_ay0_ay1 = a;
+    auto bx0_bx1_by0_by1 = b;
+
+    auto ax1_i_ay1_i = _mm_shuffle_epi32(ax0_ax1_ay0_ay1, _MM_SHUFFLE(3, 3, 1, 1));
+    auto bx1_i_by1_i = _mm_shuffle_epi32(bx0_bx1_by0_by1, _MM_SHUFFLE(3, 3, 1, 1));
+
+    auto ax0bx0_ay0by0 = _mm_mul_epi32(ax0_ax1_ay0_ay1, bx0_bx1_by0_by1);
+    auto ax0bx1_ay0by1 = _mm_mul_epi32(ax0_ax1_ay0_ay1, bx1_i_by1_i);
+    auto ax1bx0_ay1by0 = _mm_mul_epi32(ax1_i_ay1_i, bx0_bx1_by0_by1);
+
+    auto ax0bx1_ay0by1_32 = _mm_slli_epi64(ax0bx1_ay0by1, 32);
+    auto ax1bx0_ay1by0_32 = _mm_slli_epi64(ax1bx0_ay1by0, 32);
+
+    return _mm_add_epi64(ax0bx0_ay0by0, _mm_add_epi64(ax0bx1_ay0by1_32, ax1bx0_ay1by0_32));
+}
+
+INLINE __m128i _mm_mul_epi64x(__m128i a, uint64_t b)
+{
+    return _mm_mul_epi64(a, _mm_set1_epi64x(b));
+}
+#endif // __SSE2__ 
+#if __AVX2__
+INLINE __m256i _mm256_mullo_epi64 (__m256i a, __m256i b) {
+    // From https://stackoverflow.com/a/37320416 (https://stackoverflow.com/questions/37296289/fastest-way-to-multiply-an-array-of-int64-t)
+    // instruction does not exist. Split into 32-bit multiplies
+    __m256i bswap   = _mm256_shuffle_epi32(b,0xB1);           // swap H<->L
+    __m256i prodlh  = _mm256_mullo_epi32(a,bswap);            // 32 bit L*H products
+
+    // or use pshufb instead of psrlq to reduce port0 pressure on Haswell
+    __m256i prodlh2 = _mm256_srli_epi64(prodlh, 32);          // 0  , a0Hb0L,          0, a1Hb1L
+    __m256i prodlh3 = _mm256_add_epi32(prodlh2, prodlh);      // xxx, a0Lb0H+a0Hb0L, xxx, a1Lb1H+a1Hb1L
+    __m256i prodlh4 = _mm256_and_si256(prodlh3, _mm256_set1_epi64x(0x00000000FFFFFFFF)); // zero high halves
+
+    __m256i prodll  = _mm256_mul_epu32(a,b);                  // a0Lb0L,a1Lb1L, 64 bit unsigned products
+    __m256i prod    = _mm256_add_epi64(prodll,prodlh4);       // a0Lb0L+(a0Lb0H+a0Hb0L)<<32, a1Lb1L+(a1Lb1H+a1Hb1L)<<32
+    return  prod;
+}
+#endif // __AVX2__
+#endif // !(HAS_AVX_512)
+
+
 template<typename ValueType>
 struct SIMDTypes;
 
@@ -61,7 +127,6 @@ struct SIMDTypes;
    decop(storeu, suf, sz) \
    decop(load, suf, sz) \
    decop(store, suf, sz) \
-   static constexpr decltype(&_mm##sz##_cmp_##suf##_mask) cmp_mask_fn = &_mm##sz##_cmp_##suf##_mask; \
    static constexpr decltype(&OP(or, suf, sz)) or_fn = &OP(or, suf, sz);\
    static constexpr decltype(&OP(and, suf, sz)) and_fn = &OP(and, suf, sz);\
    decop(add, suf, sz) \
@@ -96,6 +161,7 @@ struct SIMDTypes;
     decop(sub, epi64, sz) \
     decop(mullo, epi64, sz) \
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
+    static constexpr decltype(&OP(mullo, epi64, sz)) mul = &OP(mullo, epi64, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
     static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
     decop(set1, epi64x, sz)
@@ -106,6 +172,7 @@ struct SIMDTypes;
     decop(add, epi64, sz) \
     decop(sub, epi64, sz) \
     decop(mullo, epi64, sz) \
+    static constexpr decltype(&OP(mullo, si##sz, sz)) mul = &OP(mullo, si##sz, sz);\
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
     static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
@@ -116,7 +183,7 @@ struct SIMDTypes;
     decop(srli, epi64, sz) \
     decop(add, epi64, sz) \
     decop(sub, epi64, sz) \
-    decop(mullo, epi64, sz) \
+    static constexpr decltype(&_mm_mul_epi64) mul = &_mm_mul_epi64;\
     static constexpr decltype(&OP(xor, si128, sz)) xor_fn = &OP(xor, si128, sz);\
     static constexpr decltype(&OP(and, si128, sz)) and_fn = &OP(and, si128, sz);\
     static constexpr decltype(&OP(or, si128, sz))  or_fn = &OP(or, si128, sz);\
@@ -195,9 +262,9 @@ union UType {
     static constexpr size_t COUNT = SType::COUNT;
     std::array<ValueType, COUNT> arr_;
     Type                        simd_;
-    UType(Type val): simd_(val) {}
-    UType(ValueType val): simd_(SType::set1(val)) {}
-    UType() {}
+    constexpr UType(Type val): simd_(val) {}
+    constexpr UType(ValueType val): simd_(SType::set1(val)) {}
+    constexpr UType() {}
     UType &operator=(Type val) {
         simd_ = val;
         return *this;
@@ -226,7 +293,7 @@ union UType {
     struct unroller {
         UType &ref_;
         template<typename Functor>
-        void for_each(const Functor &func) {
+        constexpr void for_each(const Functor &func) {
             func(ref_.arr_[COUNT - nleft]);
             unroller<nleft - 1, done + 1> ur(ref_);
             ur.for_each(func);
@@ -259,14 +326,14 @@ union UType {
     };
     template<size_t done>
     struct unroller<0, done> {
-        template<typename Functor> void for_each(const Functor &func) {}
+        template<typename Functor> constexpr void for_each(const Functor &func) {}
         unroller(UType &ref) {}
     };
     template<size_t nleft, size_t done>
     struct const_unroller {
         const UType &ref_;
         template<typename Functor>
-        void for_each(const Functor &func) {
+        constexpr void for_each(const Functor &func) {
             func(ref_.arr_[COUNT - nleft]);
             const_unroller<nleft - 1, done + 1> ur(ref_);
             ur.for_each(func);
@@ -275,16 +342,16 @@ union UType {
     };
     template<size_t done>
     struct const_unroller<0, done> {
-        template<typename Functor> void for_each(const Functor &func) {}
+        template<typename Functor> constexpr void for_each(const Functor &func) {}
         const_unroller(const UType &ref) {}
     };
     template<typename Functor>
-    void for_each(const Functor &func) {
+    constexpr void for_each(const Functor &func) {
         unroller<COUNT, 0> ur(*this);
         ur.for_each(func);
     }
     template<typename Functor>
-    void for_each(const Functor &func) const {
+    constexpr void for_each(const Functor &func) const {
         const_unroller<COUNT, 0> ur(*this);
         ur.for_each(func);
     }
@@ -329,21 +396,21 @@ struct SIMDTypes<float>{
     declare_all(ps, 512)
 #ifndef NO_SLEEF
     dec_double_sz(__m512)
-    dec_all_trig(f16, avx512f);
+    dec_all_trig(f16, avx512f)
 #endif // #ifndef NO_SLEEF
 #elif __AVX2__
     using Type = __m256;
     declare_all(ps, 256)
 #ifndef NO_SLEEF
     dec_double_sz(__m256)
-    dec_all_trig(f8, avx2);
+    dec_all_trig(f8, avx2)
 #endif // #ifndef NO_SLEEF
 #elif __SSE2__
     using Type = __m128;
     declare_all(ps, )
 #ifndef NO_SLEEF
     dec_double_sz(__m128)
-    dec_all_trig(f4, sse2);
+    dec_all_trig(f4, sse2)
 #endif // #ifndef NO_SLEEF
 #else
 #error("Need at least sse2")
@@ -365,22 +432,22 @@ struct SIMDTypes<double>{
     using Type = __m512d;
     declare_all(pd, 512)
 #ifndef NO_SLEEF
-    dec_double_sz(__m512d);
-    dec_all_trig(d8, avx512f);
+    dec_double_sz(__m512d)
+    dec_all_trig(d8, avx512f)
 #endif // #ifndef NO_SLEEF
 #elif __AVX2__
     using Type = __m256d;
     declare_all(pd, 256)
 #ifndef NO_SLEEF
-    dec_double_sz(__m256d);
-    dec_all_trig(d4, avx2);
+    dec_double_sz(__m256d)
+    dec_all_trig(d4, avx2)
 #endif // #ifndef NO_SLEEF
 #elif __SSE2__
     using Type = __m128d;
     declare_all(pd, )
 #ifndef NO_SLEEF
-    dec_double_sz(__m128d);
-    dec_all_trig(d2, sse2);
+    dec_double_sz(__m128d)
+    dec_all_trig(d2, sse2)
 #endif // #ifndef NO_SLEEF
 #else
 #error("Need at least sse2")
