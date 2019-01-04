@@ -68,50 +68,43 @@ namespace scalar {
 }
 #endif // #ifndef NO_SLEEF
 
-#if !(HAS_AVX_512)
-#if __SSE2__
-// From https://stackoverflow.com/questions/17863411/sse-multiplication-of-2-64-bit-integers
-INLINE __m128i _mm_mul_epi64(__m128i a, __m128i b)
-{
-    auto ax0_ax1_ay0_ay1 = a;
-    auto bx0_bx1_by0_by1 = b;
-
-    auto ax1_i_ay1_i = _mm_shuffle_epi32(ax0_ax1_ay0_ay1, _MM_SHUFFLE(3, 3, 1, 1));
-    auto bx1_i_by1_i = _mm_shuffle_epi32(bx0_bx1_by0_by1, _MM_SHUFFLE(3, 3, 1, 1));
-
-    auto ax0bx0_ay0by0 = _mm_mul_epi32(ax0_ax1_ay0_ay1, bx0_bx1_by0_by1);
-    auto ax0bx1_ay0by1 = _mm_mul_epi32(ax0_ax1_ay0_ay1, bx1_i_by1_i);
-    auto ax1bx0_ay1by0 = _mm_mul_epi32(ax1_i_ay1_i, bx0_bx1_by0_by1);
-
-    auto ax0bx1_ay0by1_32 = _mm_slli_epi64(ax0bx1_ay0by1, 32);
-    auto ax1bx0_ay1by0_32 = _mm_slli_epi64(ax1bx0_ay1by0, 32);
-
-    return _mm_add_epi64(ax0bx0_ay0by0, _mm_add_epi64(ax0bx1_ay0by1_32, ax1bx0_ay1by0_32));
-}
-
-INLINE __m128i _mm_mul_epi64x(__m128i a, uint64_t b)
-{
-    return _mm_mul_epi64(a, _mm_set1_epi64x(b));
-}
-#endif // __SSE2__ 
-#if __AVX2__
-INLINE __m256i _mm256_mullo_epi64 (__m256i a, __m256i b) {
-    // From https://stackoverflow.com/a/37320416 (https://stackoverflow.com/questions/37296289/fastest-way-to-multiply-an-array-of-int64-t)
+// Modified from Agner Fog's vectorclass library
+#if !(defined(__AVX512DQ__) && defined(__AVX512VL__))
+#  if defined ( __SSE4_1__ )
+INLINE __m128i _mm_mullo_epi64(__m128i a, __m128i b) {
+	//
     // instruction does not exist. Split into 32-bit multiplies
-    __m256i bswap   = _mm256_shuffle_epi32(b,0xB1);           // swap H<->L
-    __m256i prodlh  = _mm256_mullo_epi32(a,bswap);            // 32 bit L*H products
-
-    // or use pshufb instead of psrlq to reduce port0 pressure on Haswell
-    __m256i prodlh2 = _mm256_srli_epi64(prodlh, 32);          // 0  , a0Hb0L,          0, a1Hb1L
-    __m256i prodlh3 = _mm256_add_epi32(prodlh2, prodlh);      // xxx, a0Lb0H+a0Hb0L, xxx, a1Lb1H+a1Hb1L
-    __m256i prodlh4 = _mm256_and_si256(prodlh3, _mm256_set1_epi64x(0x00000000FFFFFFFF)); // zero high halves
-
-    __m256i prodll  = _mm256_mul_epu32(a,b);                  // a0Lb0L,a1Lb1L, 64 bit unsigned products
-    __m256i prod    = _mm256_add_epi64(prodll,prodlh4);       // a0Lb0L+(a0Lb0H+a0Hb0L)<<32, a1Lb1L+(a1Lb1H+a1Hb1L)<<32
+    __m128i bswap   = _mm_shuffle_epi32(b,0xB1);           // b0H,b0L,b1H,b1L (swap H<->L)
+    __m128i prodlh  = _mm_mullo_epi32(a,bswap);            // a0Lb0H,a0Hb0L,a1Lb1H,a1Hb1L, 32 bit L*H products
+    __m128i zero    = _mm_setzero_si128();                 // 0
+    __m128i prodlh2 = _mm_hadd_epi32(prodlh,zero);         // a0Lb0H+a0Hb0L,a1Lb1H+a1Hb1L,0,0
+    __m128i prodlh3 = _mm_shuffle_epi32(prodlh2,0x73);     // 0, a0Lb0H+a0Hb0L, 0, a1Lb1H+a1Hb1L
+    __m128i prodll  = _mm_mul_epu32(a,b);                  // a0Lb0L,a1Lb1L, 64 bit unsigned products
+    __m128i prod    = _mm_add_epi64(prodll,prodlh3);       // a0Lb0L+(a0Lb0H+a0Hb0L)<<32, a1Lb1L+(a1Lb1H+a1Hb1L)<<32
     return  prod;
 }
-#endif // __AVX2__
-#endif // !(HAS_AVX_512)
+INLINE __m128i _mm_mullo_epi64x(__m128i a, uint64_t b)
+{
+    return _mm_mullo_epi64(a, _mm_set1_epi64x(b));
+}
+#  endif // SSE4.1
+#  if __AVX2__
+INLINE __m256i _mm256_mullo_epi64 (__m256i a, __m256i b) {
+    __m256i bswap   = _mm256_shuffle_epi32(b,0xB1);           // swap H<->L
+    __m256i prodlh  = _mm256_mullo_epi32(a,bswap);            // 32 bit L*H products
+    __m256i zero    = _mm256_setzero_si256();                 // 0
+    __m256i prodlh2 = _mm256_hadd_epi32(prodlh,zero);         // a0Lb0H+a0Hb0L,a1Lb1H+a1Hb1L,0,0
+    __m256i prodlh3 = _mm256_shuffle_epi32(prodlh2,0x73);     // 0, a0Lb0H+a0Hb0L, 0, a1Lb1H+a1Hb1L
+    __m256i prodll  = _mm256_mul_epu32(a,b);                  // a0Lb0L,a1Lb1L, 64 bit unsigned products
+    __m256i prod    = _mm256_add_epi64(prodll,prodlh3);       // a0Lb0L+(a0Lb0H+a0Hb0L)<<32, a1Lb1L+(a1Lb1H+a1Hb1L)<<32
+    return  prod;
+}
+INLINE __m256i _mm256_mullo_epi64x(__m256i a, uint64_t b)
+{
+    return _mm256_mullo_epi64(a, _mm256_set1_epi64x(b));
+}
+  #endif // __AVX2__
+#endif // Don't have AVX512{DQ,VL}
 
 
 template<typename ValueType>
@@ -172,7 +165,6 @@ struct SIMDTypes;
     decop(add, epi64, sz) \
     decop(sub, epi64, sz) \
     decop(mullo, epi64, sz) \
-    static constexpr decltype(&OP(mullo, si##sz, sz)) mul = &OP(mullo, si##sz, sz);\
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
     static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
