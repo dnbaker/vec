@@ -51,6 +51,9 @@
 #  endif
 #endif
 
+
+
+
 namespace vec {
 
 using std::uint64_t;
@@ -104,8 +107,18 @@ INLINE __m256i _mm256_mullo_epi64x(__m256i a, uint64_t b)
     return _mm256_mullo_epi64(a, _mm256_set1_epi64x(b));
 }
   #endif // __AVX2__
+#else
+using ::_mm_mullo_epi64;
+using ::_mm256_mullo_epi64;
+INLINE __m128i _mm_mullo_epi64x(__m128i a, uint64_t b)
+{
+    return _mm_mullo_epi64(a, _mm_set1_epi64x(b));
+}
+INLINE __m256i _mm256_mullo_epi64x(__m256i a, uint64_t b)
+{
+    return _mm256_mullo_epi64(a, _mm256_set1_epi64x(b));
+}
 #endif // Don't have AVX512{DQ,VL}
-
 
 template<typename ValueType>
 struct SIMDTypes;
