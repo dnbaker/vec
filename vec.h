@@ -103,12 +103,19 @@ struct SIMDTypes;
 
 /* Use or separately because it's a keyword.*/
 
+#if HAS_AVX_512
+#define SIMD_FLOAT_CMP  \
+   static constexpr decltype(&_mm##sz##_cmp_##suf##_mask) cmp_mask_fn = &_mm##sz##_cmp_##suf##_mask;
+#else
+#define SIMD_FLOAT_CMP
+#endif
+
 #define declare_all(suf, sz) \
    decop(loadu, suf, sz) \
    decop(storeu, suf, sz) \
    decop(load, suf, sz) \
    decop(store, suf, sz) \
-   static constexpr decltype(&_mm##sz##_cmp_##suf##_mask) cmp_mask_fn = &_mm##sz##_cmp_##suf##_mask; \
+    SIMD_FLOAT_CMP \
    static constexpr decltype(&OP(or, suf, sz)) or_fn = &OP(or, suf, sz);\
    static constexpr decltype(&OP(and, suf, sz)) and_fn = &OP(and, suf, sz);\
    decop(add, suf, sz) \
@@ -246,7 +253,9 @@ union UType {
     Type                        simd_;
     constexpr UType(Type val): simd_(val) {}
     constexpr UType(ValueType val): simd_(SType::set1(val)) {}
-    constexpr UType() {}
+    constexpr UType(): UType(0) {}
+    operator Type &() {return simd_;}
+    operator const Type &() const {return simd_;}
     UType &operator=(Type val) {
         simd_ = val;
         return *this;
@@ -351,12 +360,24 @@ struct SIMDTypes<uint64_t> {
 #if HAS_AVX_512
     using Type = __m512i;
     declare_all_int512(epi64, 512)
+    static constexpr decltype(&_mm512_max_epu8) max_epu8 = &_mm512_max_epu8;
+    static constexpr decltype(&_mm512_max_epu16) max_epu16 = &_mm512_max_epu16;
+    static constexpr decltype(&_mm512_max_epu32) max_epu32 = &_mm512_max_epu32;
+    static constexpr decltype(&_mm512_max_epu64) max_epu64 = &_mm512_max_epu64;
 #elif __AVX2__
     using Type = __m256i;
     declare_all_int(epi64, 256)
+    static constexpr decltype(&_mm256_max_epu8) max_epu8 = &_mm256_max_epu8;
+    static constexpr decltype(&_mm256_max_epu16) max_epu16 = &_mm256_max_epu16;
+    static constexpr decltype(&_mm256_max_epu32) max_epu32 = &_mm256_max_epu32;
+    static constexpr decltype(&_mm256_max_epu64) max_epu64 = &_mm256_max_epu64;
 #elif __SSE2__
     using Type = __m128i;
     declare_all_int128(epi64,)
+    static constexpr decltype(&_mm_max_epu8) max_epu8 = &_mm_max_epu8;
+    static constexpr decltype(&_mm_max_epu16) max_epu16 = &_mm_max_epu16;
+    static constexpr decltype(&_mm_max_epu32) max_epu32 = &_mm_max_epu32;
+    static constexpr decltype(&_mm_max_epu64) max_epu64 = &_mm_max_epu64;
 #else
 #error("Need at least sse2")
 #endif
