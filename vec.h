@@ -110,11 +110,11 @@ INLINE __m256i _mm256_mullo_epi64x(__m256i a, uint64_t b)
 #else
 using ::_mm_mullo_epi64;
 using ::_mm256_mullo_epi64;
-INLINE __m128i _mm_mullo_epi64x(__m128i a, uint64_t b)
+INLINE constexpr __m128i _mm_mullo_epi64x(__m128i a, uint64_t b)
 {
     return _mm_mullo_epi64(a, _mm_set1_epi64x(b));
 }
-INLINE __m256i _mm256_mullo_epi64x(__m256i a, uint64_t b)
+INLINE constexpr __m256i _mm256_mullo_epi64x(__m256i a, uint64_t b)
 {
     return _mm256_mullo_epi64(a, _mm256_set1_epi64x(b));
 }
@@ -159,6 +159,41 @@ struct SIMDTypes;
     decop(load, si128, sz) \
     decop(storeu, si128, sz) \
     decop(store, si128, sz)
+
+#define declare_int_epi16(sz) \
+    decop(slli, epi16, sz) \
+    decop(srli, epi16, sz) \
+    decop(add, epi16, sz) \
+    decop(sub, epi16, sz) \
+    decop(mullo, epi16, sz) \
+    static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
+    static constexpr decltype(&OP(mullo, epi16, sz)) mul = &OP(mullo, epi16, sz);\
+    static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
+    static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
+    decop(set1, epi16, sz)
+
+#define declare_int_epi16_512(sz) \
+    decop(slli, epi16, sz) \
+    decop(srli, epi16, sz) \
+    decop(add, epi16, sz) \
+    decop(sub, epi16, sz) \
+    decop(mullo, epi16, sz) \
+    static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
+    static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
+    static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
+    decop(set1, epi16, sz)
+
+#define declare_int_epi16_128(sz) \
+    decop(slli, epi16, sz) \
+    decop(srli, epi16, sz) \
+    decop(add, epi16, sz) \
+    decop(sub, epi16, sz) \
+    static constexpr decltype(&_mm_mullo_epi16) mul = &_mm_mullo_epi16;\
+    static constexpr decltype(&_mm_mullo_epi16) mullo = &_mm_mullo_epi16;\
+    static constexpr decltype(&OP(xor, si128, sz)) xor_fn = &OP(xor, si128, sz);\
+    static constexpr decltype(&OP(and, si128, sz)) and_fn = &OP(and, si128, sz);\
+    static constexpr decltype(&OP(or, si128, sz))  or_fn = &OP(or, si128, sz);\
+    decop(set1, epi16, sz)
 
 #define declare_int_epi64(sz) \
     decop(slli, epi64, sz) \
@@ -206,6 +241,18 @@ struct SIMDTypes;
 #define declare_all_int512(suf, sz) \
     declare_int_ls(suf, sz) \
     declare_int_epi64_512(sz)
+
+#define declare_all_int_16(suf, sz) \
+    declare_int_ls(suf, sz) \
+    declare_int_epi16(sz)
+
+#define declare_all_int128_16(suf, sz) \
+    declare_int_ls128(suf, sz) \
+    declare_int_epi16_128(sz)
+
+#define declare_all_int512_16(suf, sz) \
+    declare_int_ls(suf, sz) \
+    declare_int_epi16_512(sz)
 
 
 #ifndef NO_SLEEF
@@ -271,6 +318,7 @@ union UType {
     constexpr UType(Type val): simd_(val) {}
     constexpr UType(ValueType val): simd_(SType::set1(val)) {}
     constexpr UType() {}
+    operator Type() const {return simd_;}
     UType &operator=(Type val) {
         simd_ = val;
         return *this;
@@ -390,6 +438,31 @@ struct SIMDTypes<uint64_t> {
     template<typename T>
     static constexpr bool aligned(T *ptr) {
         return (reinterpret_cast<uint64_t>(ptr) & MASK) == 0;
+    }
+    using VType = UType<SIMDTypes<ValueType>>;
+};
+
+template<>
+struct SIMDTypes<uint16_t> {
+    using ValueType = uint16_t;
+#if HAS_AVX_512
+    using Type = __m512i;
+    declare_all_int512_16(epi16, 512)
+#elif __AVX2__
+    using Type = __m256i;
+    declare_all_int_16(epi16, 256)
+#elif __SSE2__
+    using Type = __m128i;
+    declare_all_int128_16(epi16,)
+#else
+#error("Need at least sse2")
+#endif
+    static constexpr size_t ALN = sizeof(Type) / sizeof(char);
+    static constexpr size_t MASK = ALN - 1;
+    static constexpr size_t COUNT = sizeof(Type) / sizeof(ValueType);
+    template<typename T>
+    static constexpr bool aligned(T *ptr) {
+        return (reinterpret_cast<uint16_t>(ptr) & MASK) == 0;
     }
     using VType = UType<SIMDTypes<ValueType>>;
 };
