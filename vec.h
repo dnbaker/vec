@@ -110,11 +110,11 @@ INLINE __m256i _mm256_mullo_epi64x(__m256i a, uint64_t b)
 #else
 using ::_mm_mullo_epi64;
 using ::_mm256_mullo_epi64;
-INLINE constexpr __m128i _mm_mullo_epi64x(__m128i a, uint64_t b)
+INLINE __m128i _mm_mullo_epi64x(__m128i a, uint64_t b)
 {
     return _mm_mullo_epi64(a, _mm_set1_epi64x(b));
 }
-INLINE constexpr __m256i _mm256_mullo_epi64x(__m256i a, uint64_t b)
+INLINE __m256i _mm256_mullo_epi64x(__m256i a, uint64_t b)
 {
     return _mm256_mullo_epi64(a, _mm256_set1_epi64x(b));
 }
@@ -315,9 +315,9 @@ union UType {
     static constexpr size_t COUNT = SType::COUNT;
     std::array<ValueType, COUNT> arr_;
     Type                        simd_;
+    UType() {}
     constexpr UType(Type val): simd_(val) {}
     constexpr UType(ValueType val): simd_(SType::set1(val)) {}
-    constexpr UType() {}
     operator Type() const {return simd_;}
     UType &operator=(Type val) {
         simd_ = val;
