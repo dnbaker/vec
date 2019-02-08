@@ -15,6 +15,15 @@
 #include "blaze/Math.h"
 #endif
 
+#ifndef VEC_FALLTHROUGH
+#  if __cplusplus >= 201703L
+#    define VEC_FALLTHROUGH [[fallthrough]];
+#  else
+#    define VEC_FALLTHROUGH
+#  endif
+#endif
+
+
 #ifndef IS_BLAZE
 #  define IS_BLAZE(x) (::blaze::IsVector<x>::value || ::blaze::IsMatrix<x>::value)
 #endif
@@ -613,9 +622,9 @@ BLOCKOP(add, el += val)
             std::uint64_t loop = (len + 7) >> 3;\
             switch(len & 7) {\
                 case 0: do {\
-                    ITER; [[fallthrough]];\
-                    case 7: ITER; [[fallthrough]]; case 6: ITER; [[fallthrough]]; case 5: ITER; [[fallthrough]];\
-                    case 4: ITER; [[fallthrough]]; case 3: ITER; [[fallthrough]]; case 2: ITER; [[fallthrough]]; case 1: ITER;\
+                    ITER; VEC_FALLTHROUGH\
+                    case 7: ITER; VEC_FALLTHROUGH case 6: ITER; VEC_FALLTHROUGH case 5: ITER; VEC_FALLTHROUGH\
+                    case 4: ITER; VEC_FALLTHROUGH case 3: ITER; VEC_FALLTHROUGH case 2: ITER; VEC_FALLTHROUGH case 1: ITER;\
                 } while (--loop);\
             }\
         }\
