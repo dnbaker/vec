@@ -169,6 +169,41 @@ struct SIMDTypes;
     decop(storeu, si128, sz) \
     decop(store, si128, sz)
 
+#define declare_int_epi32(sz) \
+    decop(slli, epi32, sz) \
+    decop(srli, epi32, sz) \
+    decop(add, epi32, sz) \
+    decop(sub, epi32, sz) \
+    decop(mullo, epi32, sz) \
+    static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
+    static constexpr decltype(&OP(mullo, epi32, sz)) mul = &OP(mullo, epi32, sz);\
+    static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
+    static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
+    decop(set1, epi32, sz)
+
+#define declare_int_epi32_512(sz) \
+    decop(slli, epi32, sz) \
+    decop(srli, epi32, sz) \
+    decop(add, epi32, sz) \
+    decop(sub, epi32, sz) \
+    decop(mullo, epi32, sz) \
+    static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
+    static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
+    static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
+    decop(set1, epi32, sz)
+
+#define declare_int_epi32_128(sz) \
+    decop(slli, epi32, sz) \
+    decop(srli, epi32, sz) \
+    decop(add, epi32, sz) \
+    decop(sub, epi32, sz) \
+    static constexpr decltype(&_mm_mullo_epi32) mul = &_mm_mullo_epi32;\
+    static constexpr decltype(&_mm_mullo_epi32) mullo = &_mm_mullo_epi32;\
+    static constexpr decltype(&OP(xor, si128, sz)) xor_fn = &OP(xor, si128, sz);\
+    static constexpr decltype(&OP(and, si128, sz)) and_fn = &OP(and, si128, sz);\
+    static constexpr decltype(&OP(or, si128, sz))  or_fn = &OP(or, si128, sz);\
+    decop(set1, epi32, sz)
+
 #define declare_int_epi16(sz) \
     decop(slli, epi16, sz) \
     decop(srli, epi16, sz) \
@@ -250,6 +285,18 @@ struct SIMDTypes;
 #define declare_all_int512(suf, sz) \
     declare_int_ls(suf, sz) \
     declare_int_epi64_512(sz)
+
+#define declare_all_int_32(suf, sz) \
+    declare_int_ls(suf, sz) \
+    declare_int_epi32(sz)
+
+#define declare_all_int128_32(suf, sz) \
+    declare_int_ls128(suf, sz) \
+    declare_int_epi32_128(sz)
+
+#define declare_all_int512_32(suf, sz) \
+    declare_int_ls(suf, sz) \
+    declare_int_epi32_512(sz)
 
 #define declare_all_int_16(suf, sz) \
     declare_int_ls(suf, sz) \
@@ -452,6 +499,31 @@ struct SIMDTypes<uint64_t> {
 };
 
 template<>
+struct SIMDTypes<uint32_t> {
+    using ValueType = uint32_t;
+#if HAS_AVX_512
+    using Type = __m512i;
+    declare_all_int512_32(epi32, 512)
+#elif __AVX2__
+    using Type = __m256i;
+    declare_all_int_32(epi32, 256)
+#elif __SSE2__
+    using Type = __m128i;
+    declare_all_int128_32(epi32,)
+#else
+#error("Need at least sse2")
+#endif
+    static constexpr size_t ALN = sizeof(Type) / sizeof(char);
+    static constexpr size_t MASK = ALN - 1;
+    static constexpr size_t COUNT = sizeof(Type) / sizeof(ValueType);
+    template<typename T>
+    static constexpr bool aligned(T *ptr) {
+        return (reinterpret_cast<uint64_t>(ptr) & MASK) == 0;
+    }
+    using VType = UType<SIMDTypes<ValueType>>;
+};
+
+template<>
 struct SIMDTypes<uint16_t> {
     using ValueType = uint16_t;
 #if HAS_AVX_512
@@ -471,7 +543,7 @@ struct SIMDTypes<uint16_t> {
     static constexpr size_t COUNT = sizeof(Type) / sizeof(ValueType);
     template<typename T>
     static constexpr bool aligned(T *ptr) {
-        return (reinterpret_cast<uint16_t>(ptr) & MASK) == 0;
+        return (reinterpret_cast<uint64_t>(ptr) & MASK) == 0;
     }
     using VType = UType<SIMDTypes<ValueType>>;
 };
