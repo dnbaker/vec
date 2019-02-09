@@ -204,6 +204,30 @@ struct SIMDTypes;
     static constexpr decltype(&OP(or, si128, sz))  or_fn = &OP(or, si128, sz);\
     decop(set1, epi32, sz)
 
+#define declare_int_epi8(sz) \
+    decop(add, epi8, sz) \
+    decop(sub, epi8, sz) \
+    static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
+    static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
+    static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
+    decop(set1, epi8, sz)
+
+#define declare_int_epi8_512(sz) \
+    decop(add, epi8, sz) \
+    decop(sub, epi8, sz) \
+    static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
+    static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
+    static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
+    decop(set1, epi8, sz)
+
+#define declare_int_epi8_128(sz) \
+    decop(add, epi8, sz) \
+    decop(sub, epi8, sz) \
+    static constexpr decltype(&OP(xor, si128, sz)) xor_fn = &OP(xor, si128, sz);\
+    static constexpr decltype(&OP(and, si128, sz)) and_fn = &OP(and, si128, sz);\
+    static constexpr decltype(&OP(or, si128, sz))  or_fn = &OP(or, si128, sz);\
+    decop(set1, epi8, sz)
+
 #define declare_int_epi16(sz) \
     decop(slli, epi16, sz) \
     decop(srli, epi16, sz) \
@@ -309,6 +333,18 @@ struct SIMDTypes;
 #define declare_all_int512_16(suf, sz) \
     declare_int_ls(suf, sz) \
     declare_int_epi16_512(sz)
+
+#define declare_all_int_8(suf, sz) \
+    declare_int_ls(suf, sz) \
+    declare_int_epi8(sz)
+
+#define declare_all_int128_8(suf, sz) \
+    declare_int_ls128(suf, sz) \
+    declare_int_epi8_128(sz)
+
+#define declare_all_int512_8(suf, sz) \
+    declare_int_ls(suf, sz) \
+    declare_int_epi8_512(sz)
 
 
 #ifndef NO_SLEEF
@@ -535,6 +571,30 @@ struct SIMDTypes<uint16_t> {
 #elif __SSE2__
     using Type = __m128i;
     declare_all_int128_16(epi16,)
+#else
+#error("Need at least sse2")
+#endif
+    static constexpr size_t ALN = sizeof(Type) / sizeof(char);
+    static constexpr size_t MASK = ALN - 1;
+    static constexpr size_t COUNT = sizeof(Type) / sizeof(ValueType);
+    template<typename T>
+    static constexpr bool aligned(T *ptr) {
+        return (reinterpret_cast<uint64_t>(ptr) & MASK) == 0;
+    }
+    using VType = UType<SIMDTypes<ValueType>>;
+};
+template<>
+struct SIMDTypes<uint8_t> {
+    using ValueType = uint8_t;
+#if HAS_AVX_512
+    using Type = __m512i;
+    declare_all_int512_8(epi8, 512)
+#elif __AVX2__
+    using Type = __m256i;
+    declare_all_int_8(epi8, 256)
+#elif __SSE2__
+    using Type = __m128i;
+    declare_all_int128_8(epi8,)
 #else
 #error("Need at least sse2")
 #endif
