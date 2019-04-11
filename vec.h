@@ -176,6 +176,8 @@ struct SIMDTypes;
     decop(srli, epi32, sz) \
     decop(add, epi32, sz) \
     decop(sub, epi32, sz) \
+    decop(min, epi32, sz) \
+    decop(max, epi32, sz) \
     decop(mullo, epi32, sz) \
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
     static constexpr decltype(&OP(mullo, epi32, sz)) mul = &OP(mullo, epi32, sz);\
@@ -188,6 +190,8 @@ struct SIMDTypes;
     decop(srli, epi32, sz) \
     decop(add, epi32, sz) \
     decop(sub, epi32, sz) \
+    decop(min, epi32, sz) \
+    decop(max, epi32, sz) \
     decop(mullo, epi32, sz) \
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
@@ -199,6 +203,8 @@ struct SIMDTypes;
     decop(srli, epi32, sz) \
     decop(add, epi32, sz) \
     decop(sub, epi32, sz) \
+    decop(min, epi32, sz) \
+    decop(max, epi32, sz) \
     static constexpr decltype(&_mm_mullo_epi32) mul = &_mm_mullo_epi32;\
     static constexpr decltype(&_mm_mullo_epi32) mullo = &_mm_mullo_epi32;\
     static constexpr decltype(&OP(xor, si128, sz)) xor_fn = &OP(xor, si128, sz);\
@@ -209,6 +215,8 @@ struct SIMDTypes;
 #define declare_int_epi8(sz) \
     decop(add, epi8, sz) \
     decop(sub, epi8, sz) \
+    decop(min, epu8, sz) \
+    decop(max, epu8, sz) \
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
     static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
@@ -217,6 +225,8 @@ struct SIMDTypes;
 #define declare_int_epi8_512(sz) \
     decop(add, epi8, sz) \
     decop(sub, epi8, sz) \
+    decop(min, epu8, sz) \
+    decop(max, epu8, sz) \
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
     static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
@@ -225,6 +235,8 @@ struct SIMDTypes;
 #define declare_int_epi8_128(sz) \
     decop(add, epi8, sz) \
     decop(sub, epi8, sz) \
+    decop(min, epu8, sz) \
+    decop(max, epu8, sz) \
     static constexpr decltype(&OP(xor, si128, sz)) xor_fn = &OP(xor, si128, sz);\
     static constexpr decltype(&OP(and, si128, sz)) and_fn = &OP(and, si128, sz);\
     static constexpr decltype(&OP(or, si128, sz))  or_fn = &OP(or, si128, sz);\
@@ -235,6 +247,8 @@ struct SIMDTypes;
     decop(srli, epi16, sz) \
     decop(add, epi16, sz) \
     decop(sub, epi16, sz) \
+    decop(min, epu16, sz) \
+    decop(max, epu16, sz) \
     decop(mullo, epi16, sz) \
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
     static constexpr decltype(&OP(mullo, epi16, sz)) mul = &OP(mullo, epi16, sz);\
@@ -246,6 +260,8 @@ struct SIMDTypes;
     decop(slli, epi16, sz) \
     decop(srli, epi16, sz) \
     decop(add, epi16, sz) \
+    decop(min, epu16, sz) \
+    decop(max, epu16, sz) \
     decop(sub, epi16, sz) \
     decop(mullo, epi16, sz) \
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
@@ -257,6 +273,8 @@ struct SIMDTypes;
     decop(slli, epi16, sz) \
     decop(srli, epi16, sz) \
     decop(add, epi16, sz) \
+    decop(min, epu16, sz) \
+    decop(max, epu16, sz) \
     decop(sub, epi16, sz) \
     static constexpr decltype(&_mm_mullo_epi16) mul = &_mm_mullo_epi16;\
     static constexpr decltype(&_mm_mullo_epi16) mullo = &_mm_mullo_epi16;\
@@ -283,6 +301,8 @@ struct SIMDTypes;
     decop(add, epi64, sz) \
     decop(sub, epi64, sz) \
     decop(mullo, epi64, sz) \
+    decop(min, epu64, sz) \
+    decop(max, epu64, sz) \
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
     static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
