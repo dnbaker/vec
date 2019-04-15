@@ -18,8 +18,6 @@
 #ifndef VEC_FALLTHROUGH
 #  if __has_cpp_attribute(fallthrough)
 #    define VEC_FALLTHROUGH [[fallthrough]];
-#  elif defined(__GNUC__)
-#    define VEC_FALLTHROUGH [[gnu::fallthrough]];
 #  else
 #    define VEC_FALLTHROUGH
 #  endif
