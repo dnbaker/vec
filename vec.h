@@ -498,8 +498,9 @@ union UType {
     };
     template<size_t done>
     struct unroller<0, done> {
+        UType &ref_;
         template<typename Functor> constexpr void for_each(VEC_MAYBE_UNUSED const Functor &func) {}
-        unroller(UType &ref) {}
+        unroller(UType &ref): ref_(ref){}
     };
     template<size_t nleft, size_t done>
     struct const_unroller {
@@ -889,5 +890,6 @@ void memblockset(void *dest, T val, SizeType nbytes) {
 
 #undef declare_all
 #undef decop
+#undef VEC_MAYBE_UNUSED
 
 #endif // #ifndef _VEC_H__
