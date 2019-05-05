@@ -2,7 +2,7 @@
 #define _VEC_H__
 #define NOSVML
 #ifndef NO_SLEEF
-#  include "sleef/include/sleefdft.h"
+#  include "./sleef/include/sleefdft.h"
 #  include "sleef.h"
 #endif // #ifndef NO_SLEEF
 #include "x86intrin.h"
