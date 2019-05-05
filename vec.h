@@ -23,6 +23,12 @@
 #  endif
 #endif
 
+#if __has_cpp_attribute(maybe_unused)
+#define VEC_MAYBE_UNUSED [[maybe_unused]]
+#else
+#define VEC_MAYBE_UNUSED
+#endif
+
 
 #ifndef IS_BLAZE
 #  define IS_BLAZE(x) (::blaze::IsVector<x>::value || ::blaze::IsMatrix<x>::value)
@@ -492,8 +498,9 @@ union UType {
     };
     template<size_t done>
     struct unroller<0, done> {
-        template<typename Functor> constexpr void for_each(const Functor &func) {}
-        unroller(UType &ref) {}
+        UType &ref_;
+        template<typename Functor> constexpr void for_each(VEC_MAYBE_UNUSED const Functor &func) {}
+        unroller(UType &ref): ref_(ref){}
     };
     template<size_t nleft, size_t done>
     struct const_unroller {
@@ -883,5 +890,6 @@ void memblockset(void *dest, T val, SizeType nbytes) {
 
 #undef declare_all
 #undef decop
+#undef VEC_MAYBE_UNUSED
 
 #endif // #ifndef _VEC_H__
