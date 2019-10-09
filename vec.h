@@ -29,6 +29,14 @@
 #define VEC_MAYBE_UNUSED
 #endif
 
+#ifndef CONST_IF
+#  if __cplusplus >= __cpp_if_constexpr
+#    define CONST_IF(...) if constexpr(__VA_ARGS__)
+#  else
+#    define CONST_IF(...) if(__VA_ARGS__)
+#  endif
+#endif
+
 
 #ifndef IS_BLAZE
 #  define IS_BLAZE(x) (::blaze::IsVector<x>::value || ::blaze::IsMatrix<x>::value)
@@ -845,14 +853,14 @@ void block_apply(FloatType *pos, size_t nelem, const Functor &func=Functor{}) {
 template<typename Container, typename Functor>
 void block_apply(Container &con, const Functor &func=Functor{}) {
 #ifndef NO_BLAZE
-    if constexpr(IS_CONTIGUOUS_UNCOMPRESSED_BLAZE(Container)) {
+    CONST_IF(IS_CONTIGUOUS_UNCOMPRESSED_BLAZE(Container)) {
         const size_t nelem(con.size());
         block_apply(&(*std::begin(con)), nelem, func);
     } else {
 #endif
         if(&con[1] - &con[0] == 1) {
-        const size_t nelem(con.size());
-        block_apply(&(*std::begin(con)), nelem, func);
+            const size_t nelem(con.size());
+            block_apply(&(*std::begin(con)), nelem, func);
         } else for(auto &el: con) el = func.scalar(el);
 #ifndef NO_BLAZE
     }
