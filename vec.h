@@ -568,6 +568,7 @@ struct SIMDTypes<uint64_t> {
     }
     using VType = UType<SIMDTypes<ValueType>>;
 };
+template<> struct SIMDTypes<int64_t>: public SIMDTypes<uint64_t> {};
 
 template<>
 struct SIMDTypes<uint32_t> {
@@ -593,6 +594,7 @@ struct SIMDTypes<uint32_t> {
     }
     using VType = UType<SIMDTypes<ValueType>>;
 };
+template<> struct SIMDTypes<int32_t>: public SIMDTypes<uint32_t> {};
 
 template<>
 struct SIMDTypes<uint16_t> {
@@ -618,6 +620,7 @@ struct SIMDTypes<uint16_t> {
     }
     using VType = UType<SIMDTypes<ValueType>>;
 };
+template<> struct SIMDTypes<int16_t>: public SIMDTypes<uint16_t> {};
 template<>
 struct SIMDTypes<uint8_t> {
     using ValueType = uint8_t;
@@ -642,6 +645,7 @@ struct SIMDTypes<uint8_t> {
     }
     using VType = UType<SIMDTypes<ValueType>>;
 };
+template<> struct SIMDTypes<int8_t>: public SIMDTypes<uint8_t> {};
 
 template<>
 struct SIMDTypes<float>{

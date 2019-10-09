@@ -103,11 +103,34 @@ public:
     }
     T kurtosis() const {return static_cast<T>(n_)*m4_ / (m2_*m2_) - 3.0;}
 
-    friend OnlineStatistics operator+(const OnlineStatistics a, const OnlineStatistics b);
-    OnlineStatistics& operator+=(const OnlineStatistics& rhs)
+    template<typename T1, typename SizeType2>
+    OnlineStatistics& operator+=(const OnlineStatistics<T1, SizeType2>& b)
     {
-            OnlineStatistics combined = *this + rhs;
-            return *this = combined;
+        auto newn = this->n + b.n;
+
+        const T delta = b.m1_ - this->m1_;
+        const T delta2 = delta*delta;
+        const T delta3 = delta*delta2;
+        const T delta4 = delta2*delta2;
+
+        auto newm1 = (this->n*this->m1_ + b.n*b.m1_) / newn;
+        auto newm2 = this->m2_ + b.m2_ +
+                      delta2 * this->n * b.n / newn;
+
+        auto newm3 = this->m3_ + b.m3_ +
+                     delta3 * this->n * b.n * (this->n - b.n)/(newn*newn);
+        newm3 += 3.0*delta * (this->n*b.m2_ - b.n*this->m2_) / newn;
+
+        auto newm4 = this->m4_ + b.m4_ + delta4*this->n*b.n * (this->n*this->n - this->n*b.n + b.n*b.n) /
+                      (newn*newn*newn);
+        newm4 += 6.0*delta2 * (this->n*this->n*b.m2_ + b.n*b.n*this->m2_)/(newn*newn) +
+                 4.0*delta*(this->n*b.m3_ - b.n*this->m3_) / newn;
+        this->n = newn;
+        this->m4_ = newm4;
+        this->m3_ = newm3;
+        this->m2_ = newm2;
+        this->m1_ = newm1;
+        return *this;
     }
 
 private:
@@ -115,35 +138,11 @@ private:
     SizeType n_;
 };
 
-template<typename T=float, typename SizeType=std::int32_t,
-         typename=typename std::enable_if<std::is_floating_point<T>::value>::type,
-         typename=typename std::enable_if<std::is_integral<SizeType>::value>::type>
-OnlineStatistics<T, SizeType> operator+(const OnlineStatistics<T, SizeType> &a,
-                                        const OnlineStatistics<T, SizeType> &b) {
-    OnlineStatistics<T, SizeType> combined;
-
-    combined.n = a.n + b.n;
-
-    const T delta = b.m1_ - a.m1_;
-    const T delta2 = delta*delta;
-    const T delta3 = delta*delta2;
-    const T delta4 = delta2*delta2;
-
-    combined.m1_ = (a.n*a.m1_ + b.n*b.m1_) / combined.n;
-
-    combined.m2_ = a.m2_ + b.m2_ +
-                  delta2 * a.n * b.n / combined.n;
-
-    combined.m3_ = a.m3_ + b.m3_ +
-                  delta3 * a.n * b.n * (a.n - b.n)/(combined.n*combined.n);
-    combined.m3_ += 3.0*delta * (a.n*b.m2_ - b.n*a.m2_) / combined.n;
-
-    combined.m4_ = a.m4_ + b.m4_ + delta4*a.n*b.n * (a.n*a.n - a.n*b.n + b.n*b.n) /
-                  (combined.n*combined.n*combined.n);
-    combined.m4_ += 6.0*delta2 * (a.n*a.n*b.m2_ + b.n*b.n*a.m2_)/(combined.n*combined.n) +
-                  4.0*delta*(a.n*b.m3_ - b.n*a.m3_) / combined.n;
-
-    return combined;
+template<typename T, typename SizeType>
+auto operator+(const OnlineStatistics<T, SizeType> &a, const OnlineStatistics<T, SizeType> &b) {
+    auto ret(a); // Copy a
+    ret += b;
+    return ret;
 }
 
 } // namespace stats
