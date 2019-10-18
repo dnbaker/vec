@@ -16,7 +16,7 @@
 #endif
 
 #ifndef VEC_FALLTHROUGH
-#  if __has_cpp_attribute(fallthrough)
+#  if __cplusplus >= __has_cpp_attribute(fallthrough)
 #    define VEC_FALLTHROUGH [[fallthrough]];
 #  else
 #    define VEC_FALLTHROUGH
