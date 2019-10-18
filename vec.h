@@ -23,10 +23,10 @@
 #  endif
 #endif
 
-#if __has_cpp_attribute(maybe_unused)
+#if __cplusplus >= __has_cpp_attribute(maybe_unused)
 #define VEC_MAYBE_UNUSED [[maybe_unused]]
 #else
-#define VEC_MAYBE_UNUSED
+#define VEC_MAYBE_UNUSED __attribute__((maybe_unused))
 #endif
 
 #ifndef CONST_IF
