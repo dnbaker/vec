@@ -18,8 +18,10 @@
 #ifndef VEC_FALLTHROUGH
 #  if __cplusplus >= __has_cpp_attribute(fallthrough)
 #    define VEC_FALLTHROUGH [[fallthrough]];
+#  elif defined(__GNUC__) || defined(__clang__)
+#    define VEC_FALLTHROUGH __attribute__((fallthrough));
 #  else
-#    define VEC_FALLTHROUGH
+#    define VEC_FALLTHROUGH ;
 #  endif
 #endif
 
