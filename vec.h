@@ -16,17 +16,27 @@
 #endif
 
 #ifndef VEC_FALLTHROUGH
-#  if __has_cpp_attribute(fallthrough)
+#  if __cplusplus >= __has_cpp_attribute(fallthrough)
 #    define VEC_FALLTHROUGH [[fallthrough]];
+#  elif defined(__GNUC__) || defined(__clang__)
+#    define VEC_FALLTHROUGH __attribute__((fallthrough));
 #  else
-#    define VEC_FALLTHROUGH
+#    define VEC_FALLTHROUGH ;
 #  endif
 #endif
 
-#if __has_cpp_attribute(maybe_unused)
+#if __cplusplus >= __has_cpp_attribute(maybe_unused)
 #define VEC_MAYBE_UNUSED [[maybe_unused]]
 #else
-#define VEC_MAYBE_UNUSED
+#define VEC_MAYBE_UNUSED __attribute__((maybe_unused))
+#endif
+
+#ifndef CONST_IF
+#  if defined(__cpp_if_constexpr) && __cplusplus >= __cpp_if_constexpr
+#    define CONST_IF(...) if constexpr(__VA_ARGS__)
+#  else
+#    define CONST_IF(...) if(__VA_ARGS__)
+#  endif
 #endif
 
 
@@ -560,6 +570,7 @@ struct SIMDTypes<uint64_t> {
     }
     using VType = UType<SIMDTypes<ValueType>>;
 };
+template<> struct SIMDTypes<int64_t>: public SIMDTypes<uint64_t> {};
 
 template<>
 struct SIMDTypes<uint32_t> {
@@ -585,6 +596,7 @@ struct SIMDTypes<uint32_t> {
     }
     using VType = UType<SIMDTypes<ValueType>>;
 };
+template<> struct SIMDTypes<int32_t>: public SIMDTypes<uint32_t> {};
 
 template<>
 struct SIMDTypes<uint16_t> {
@@ -610,6 +622,7 @@ struct SIMDTypes<uint16_t> {
     }
     using VType = UType<SIMDTypes<ValueType>>;
 };
+template<> struct SIMDTypes<int16_t>: public SIMDTypes<uint16_t> {};
 template<>
 struct SIMDTypes<uint8_t> {
     using ValueType = uint8_t;
@@ -634,6 +647,7 @@ struct SIMDTypes<uint8_t> {
     }
     using VType = UType<SIMDTypes<ValueType>>;
 };
+template<> struct SIMDTypes<int8_t>: public SIMDTypes<uint8_t> {};
 
 template<>
 struct SIMDTypes<float>{
@@ -845,14 +859,14 @@ void block_apply(FloatType *pos, size_t nelem, const Functor &func=Functor{}) {
 template<typename Container, typename Functor>
 void block_apply(Container &con, const Functor &func=Functor{}) {
 #ifndef NO_BLAZE
-    if constexpr(IS_CONTIGUOUS_UNCOMPRESSED_BLAZE(Container)) {
+    CONST_IF(IS_CONTIGUOUS_UNCOMPRESSED_BLAZE(Container)) {
         const size_t nelem(con.size());
         block_apply(&(*std::begin(con)), nelem, func);
     } else {
 #endif
         if(&con[1] - &con[0] == 1) {
-        const size_t nelem(con.size());
-        block_apply(&(*std::begin(con)), nelem, func);
+            const size_t nelem(con.size());
+            block_apply(&(*std::begin(con)), nelem, func);
         } else for(auto &el: con) el = func.scalar(el);
 #ifndef NO_BLAZE
     }
