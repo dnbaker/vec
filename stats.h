@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VEC_STATS_H
+#define VEC_STATS_H
 #include "vec.h"
 #include <stdexcept>
 #include <limits>
@@ -92,3 +93,4 @@ auto pearsonr(const Container &c1, const Container &c2) {
 
 
 } // stats
+#endif

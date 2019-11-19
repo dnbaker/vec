@@ -44,12 +44,10 @@ class OnlineVectorSD {
 public:
 
     template<typename VType2>
-    OnlineVectorSD(const VType2 &vec): old_mean_(vec.size()), new_mean_(vec.size()), olds_(vec.size()), news_(vec.size()), n_(0) {
-        old_mean_.reset();
-        olds_.reset();
-        new_mean_.reset();
-        news_.reset();
+    OnlineVectorSD(const VType2 &vec): OnlineVectorSD(vec.size()) {
+        add(vec);
     }
+    OnlineVectorSD(size_t d): old_mean_(0, d), new_mean_(0, d), olds_(0, d), news_(0, d), n_(0) {}
 
     template<typename VType2>
     void add(const VType2 &x)
@@ -66,9 +64,9 @@ public:
     }
 #define ASSERTFULL() do {if(!n_) {throw std::runtime_error("Cannot calculate stats on an empty stream.");}} while(0)
     size_t n()   const {return n_;}
-    VecType mean()     const {ASSERTFULL(); return new_mean_;}
-    VecType variance() const {ASSERTFULL(); return news_ / (n_ - 1);}
-    VecType stdev()    const {ASSERTFULL(); return blaze::sqrt(variance());}
+    const VecType &mean()     const {ASSERTFULL(); return new_mean_;}
+    const VecType &variance() const {ASSERTFULL(); return news_ / (n_ - 1);}
+    const VecType &stdev()    const {ASSERTFULL(); return blaze::sqrt(variance());}
 };
 
 template<typename T=float, typename SizeType=std::int64_t,
