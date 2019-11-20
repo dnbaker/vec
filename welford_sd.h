@@ -47,7 +47,7 @@ public:
     OnlineVectorSD(const VType2 &vec): OnlineVectorSD(vec.size()) {
         add(vec);
     }
-    OnlineVectorSD(size_t d): old_mean_(0, d), new_mean_(0, d), olds_(0, d), news_(0, d), n_(0) {}
+    OnlineVectorSD(size_t d): old_mean_(d, 0), new_mean_(d, 0), olds_(d, 0), news_(d, 0), n_(0) {}
 
     template<typename VType2>
     void add(const VType2 &x)
