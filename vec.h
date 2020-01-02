@@ -25,12 +25,6 @@
 #  endif
 #endif
 
-#if __cplusplus >= __has_cpp_attribute(maybe_unused)
-#define VEC_MAYBE_UNUSED [[maybe_unused]]
-#else
-#define VEC_MAYBE_UNUSED __attribute__((maybe_unused))
-#endif
-
 #ifndef CONST_IF
 #  if defined(__cpp_if_constexpr) && __cplusplus >= __cpp_if_constexpr
 #    define CONST_IF(...) if constexpr(__VA_ARGS__)
@@ -509,7 +503,7 @@ union UType {
     template<size_t done>
     struct unroller<0, done> {
         UType &ref_;
-        template<typename Functor> constexpr void for_each(VEC_MAYBE_UNUSED const Functor &func) {}
+        template<typename Functor> constexpr void for_each(const Functor &) {}
         unroller(UType &ref): ref_(ref){}
     };
     template<size_t nleft, size_t done>
@@ -904,6 +898,5 @@ void memblockset(void *dest, T val, SizeType nbytes) {
 
 #undef declare_all
 #undef decop
-#undef VEC_MAYBE_UNUSED
 
 #endif // #ifndef _VEC_H__
