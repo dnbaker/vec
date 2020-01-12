@@ -87,6 +87,7 @@ namespace scalar {
     }
     template<typename T> auto sqrt_u35(T val) {return sqrt(val);}
     template<typename T> auto sqrt_u05(T val) {return sqrt(val);}
+    template<typename T> auto frfrexp(T val) {return Sleef_frfrexp(val);}
 }
 #endif // #ifndef NO_SLEEF
 
@@ -390,6 +391,16 @@ struct SIMDTypes;
         OT scalar(OT val) const {return scalar::op(val);} \
     };
 
+#define dec_sleefop_noprec(op, suf, instructset) \
+    static constexpr decltype(&SLEEF_OP(op, suf,, instructset)) op = \
+    &SLEEF_OP(op, suf,, instructset); \
+    struct apply_##op##_##prec {\
+        template<typename... T>\
+        auto operator()(T &&...args) const {return op(std::forward<T...>(args)...);} \
+        template<typename OT>\
+        OT scalar(OT val) const {return scalar::op(val);} \
+    };
+
 
 #define dec_all_precs(op, suf, instructset) \
     dec_sleefop_prec(op, suf, u35, instructset) \
@@ -428,7 +439,16 @@ struct SIMDTypes;
    dec_sleefop_prec(acosh, suf, u10, set) \
    dec_sleefop_prec(tanh, suf, u10, set) \
    dec_sleefop_prec(atanh, suf, u10, set) \
-   dec_all_precs_u05(sqrt, suf, set)
+   dec_all_precs_u05(sqrt, suf, set) \
+   dec_sleefop_noprec(floor, suf, set) \
+   dec_sleefop_noprec(ceil, suf, set) \
+   dec_sleefop_noprec(round, suf, set) \
+   dec_sleefop_noprec(nextafter, suf, set) \
+   /*dec_sleefop_noprec(ldexp, suf, set) */\
+   dec_sleefop_noprec(fmod, suf, set) \
+   dec_sleefop_noprec(frfrexp, suf, set) \
+   dec_sleefop_noprec(remainder, suf, set) \
+   dec_sleefop_noprec(trunc, suf, set)
 
 #endif // #ifndef NO_SLEEF
     
