@@ -409,17 +409,19 @@ struct SIMDTypes;
    dec_all_precs(asin, suf, set) \
    dec_all_precs(acos, suf, set) \
    dec_all_precs(atan, suf, set) \
-   dec_all_precs(atan2, suf, set) \
    dec_all_precs(cbrt, suf, set) \
    dec_all_precs(sincos, suf, set) \
+   dec_all_precs(atan2, suf, set) \
    dec_sleefop_prec(log, suf, u10, set) \
    dec_sleefop_prec(log1p, suf, u10, set) \
+   dec_sleefop_prec(pow, suf, u10, set) \
    dec_sleefop_prec(expm1, suf, u10, set) \
    dec_sleefop_prec(exp, suf, u10, set) \
    dec_sleefop_prec(exp2, suf, u10, set) \
-   /*dec_sleefop_prec(exp10, suf, u10, set) */ \
    dec_sleefop_prec(lgamma, suf, u10, set) \
    dec_sleefop_prec(tgamma, suf, u10, set) \
+   dec_sleefop_prec(erf, suf, u10, set) \
+   dec_sleefop_prec(erfc, suf, u15, set) \
    dec_sleefop_prec(sinh, suf, u10, set) \
    dec_sleefop_prec(cosh, suf, u10, set) \
    dec_sleefop_prec(asinh, suf, u10, set) \
