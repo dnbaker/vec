@@ -414,7 +414,7 @@ struct SIMDTypes;
 #define dec_double_sz(type) using TypeDouble = Sleef_##type##_2;
 
 
-#define dec_all_trig(suf, set) \
+#define declare_all_sleef_special(suf, set) \
    dec_all_precs(sin, suf, set) \
    dec_all_precs(cos, suf, set) \
    dec_all_precs(asin, suf, set) \
@@ -444,7 +444,6 @@ struct SIMDTypes;
    dec_sleefop_noprec(ceil, suf, set) \
    dec_sleefop_noprec(round, suf, set) \
    dec_sleefop_noprec(nextafter, suf, set) \
-   /*dec_sleefop_noprec(ldexp, suf, set) */\
    dec_sleefop_noprec(fmod, suf, set) \
    dec_sleefop_noprec(frfrexp, suf, set) \
    dec_sleefop_noprec(remainder, suf, set) \
@@ -673,21 +672,25 @@ struct SIMDTypes<float>{
     declare_all(ps, 512)
 #ifndef NO_SLEEF
     dec_double_sz(__m512)
-    dec_all_trig(f16, avx512f)
+    declare_all_sleef_special(f16, avx512f)
 #endif // #ifndef NO_SLEEF
 #elif __AVX2__
     using Type = __m256;
     declare_all(ps, 256)
 #ifndef NO_SLEEF
     dec_double_sz(__m256)
-    dec_all_trig(f8, avx2)
+    declare_all_sleef_special(f8, avx2)
 #endif // #ifndef NO_SLEEF
 #elif __SSE2__
     using Type = __m128;
     declare_all(ps, )
 #ifndef NO_SLEEF
     dec_double_sz(__m128)
-    dec_all_trig(f4, sse2)
+#  ifdef __SSE4_1__
+    declare_all_sleef_special(f4, sse4)
+#  else
+    declare_all_sleef_special(f4, sse2)
+#  endif
 #endif // #ifndef NO_SLEEF
 #else
 #error("Need at least sse2")
@@ -710,24 +713,32 @@ struct SIMDTypes<double>{
     declare_all(pd, 512)
 #ifndef NO_SLEEF
     dec_double_sz(__m512d)
-    dec_all_trig(d8, avx512f)
+    declare_all_sleef_special(d8, avx512f)
+    dec_sleefop_noprec(ldexp, d8, avx512f)
 #endif // #ifndef NO_SLEEF
 #elif __AVX2__
     using Type = __m256d;
     declare_all(pd, 256)
 #ifndef NO_SLEEF
     dec_double_sz(__m256d)
-    dec_all_trig(d4, avx2)
+    declare_all_sleef_special(d4, avx2)
+    dec_sleefop_noprec(ldexp, d4, avx2)
 #endif // #ifndef NO_SLEEF
 #elif __SSE2__
     using Type = __m128d;
     declare_all(pd, )
 #ifndef NO_SLEEF
     dec_double_sz(__m128d)
-    dec_all_trig(d2, sse2)
+#  ifdef __SSE4_1__
+    declare_all_sleef_special(d2, sse4)
+    dec_sleefop_noprec(ldexp, d2, sse4)
+#  else
+    declare_all_sleef_special(d2, sse2)
+    dec_sleefop_noprec(ldexp, d2, sse2)
+#  endif
 #endif // #ifndef NO_SLEEF
 #else
-#error("Need at least sse2")
+#  error("Need at least sse2")
 #endif
     static constexpr size_t ALN = sizeof(Type) / sizeof(char);
     static constexpr size_t MASK = ALN - 1;
@@ -914,7 +925,7 @@ void memblockset(void *dest, T val, SizeType nbytes) {
 #undef dec_sleefop_prec
 #undef dec_all_precs
 #undef dec_all_precs_u05
-#undef dec_all_trig
+#undef declare_all_sleef_special
 #undef dec_double_sz
 #endif // #ifndef NO_SLEEF
 
