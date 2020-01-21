@@ -16,17 +16,21 @@
 #endif
 
 #ifndef VEC_FALLTHROUGH
-#  if __has_cpp_attribute(fallthrough)
+#  if __cplusplus >= __has_cpp_attribute(fallthrough)
 #    define VEC_FALLTHROUGH [[fallthrough]];
+#  elif defined(__GNUC__) || defined(__clang__)
+#    define VEC_FALLTHROUGH __attribute__((fallthrough));
 #  else
-#    define VEC_FALLTHROUGH
+#    define VEC_FALLTHROUGH ;
 #  endif
 #endif
 
-#if __has_cpp_attribute(maybe_unused)
-#define VEC_MAYBE_UNUSED [[maybe_unused]]
-#else
-#define VEC_MAYBE_UNUSED
+#ifndef CONST_IF
+#  if defined(__cpp_if_constexpr) && __cplusplus >= __cpp_if_constexpr
+#    define CONST_IF(...) if constexpr(__VA_ARGS__)
+#  else
+#    define CONST_IF(...) if(__VA_ARGS__)
+#  endif
 #endif
 
 
@@ -83,6 +87,7 @@ namespace scalar {
     }
     template<typename T> auto sqrt_u35(T val) {return sqrt(val);}
     template<typename T> auto sqrt_u05(T val) {return sqrt(val);}
+    template<typename T> auto frfrexp(T val) {return Sleef_frfrexp(val);}
 }
 #endif // #ifndef NO_SLEEF
 
@@ -386,6 +391,16 @@ struct SIMDTypes;
         OT scalar(OT val) const {return scalar::op(val);} \
     };
 
+#define dec_sleefop_noprec(op, suf, instructset) \
+    static constexpr decltype(&SLEEF_OP(op, suf,, instructset)) op = \
+    &SLEEF_OP(op, suf,, instructset); \
+    struct apply_##op##_##prec {\
+        template<typename... T>\
+        auto operator()(T &&...args) const {return op(std::forward<T...>(args)...);} \
+        template<typename OT>\
+        OT scalar(OT val) const {return scalar::op(val);} \
+    };
+
 
 #define dec_all_precs(op, suf, instructset) \
     dec_sleefop_prec(op, suf, u35, instructset) \
@@ -399,30 +414,40 @@ struct SIMDTypes;
 #define dec_double_sz(type) using TypeDouble = Sleef_##type##_2;
 
 
-#define dec_all_trig(suf, set) \
+#define declare_all_sleef_special(suf, set) \
    dec_all_precs(sin, suf, set) \
    dec_all_precs(cos, suf, set) \
    dec_all_precs(asin, suf, set) \
    dec_all_precs(acos, suf, set) \
    dec_all_precs(atan, suf, set) \
-   dec_all_precs(atan2, suf, set) \
    dec_all_precs(cbrt, suf, set) \
    dec_all_precs(sincos, suf, set) \
+   dec_all_precs(atan2, suf, set) \
    dec_sleefop_prec(log, suf, u10, set) \
    dec_sleefop_prec(log1p, suf, u10, set) \
+   dec_sleefop_prec(pow, suf, u10, set) \
    dec_sleefop_prec(expm1, suf, u10, set) \
    dec_sleefop_prec(exp, suf, u10, set) \
    dec_sleefop_prec(exp2, suf, u10, set) \
-   /*dec_sleefop_prec(exp10, suf, u10, set) */ \
    dec_sleefop_prec(lgamma, suf, u10, set) \
    dec_sleefop_prec(tgamma, suf, u10, set) \
+   dec_sleefop_prec(erf, suf, u10, set) \
+   dec_sleefop_prec(erfc, suf, u15, set) \
    dec_sleefop_prec(sinh, suf, u10, set) \
    dec_sleefop_prec(cosh, suf, u10, set) \
    dec_sleefop_prec(asinh, suf, u10, set) \
    dec_sleefop_prec(acosh, suf, u10, set) \
    dec_sleefop_prec(tanh, suf, u10, set) \
    dec_sleefop_prec(atanh, suf, u10, set) \
-   dec_all_precs_u05(sqrt, suf, set)
+   dec_all_precs_u05(sqrt, suf, set) \
+   dec_sleefop_noprec(floor, suf, set) \
+   dec_sleefop_noprec(ceil, suf, set) \
+   dec_sleefop_noprec(round, suf, set) \
+   dec_sleefop_noprec(nextafter, suf, set) \
+   dec_sleefop_noprec(fmod, suf, set) \
+   dec_sleefop_noprec(frfrexp, suf, set) \
+   dec_sleefop_noprec(remainder, suf, set) \
+   dec_sleefop_noprec(trunc, suf, set)
 
 #endif // #ifndef NO_SLEEF
     
@@ -499,7 +524,7 @@ union UType {
     template<size_t done>
     struct unroller<0, done> {
         UType &ref_;
-        template<typename Functor> constexpr void for_each(VEC_MAYBE_UNUSED const Functor &func) {}
+        template<typename Functor> constexpr void for_each(const Functor &) {}
         unroller(UType &ref): ref_(ref){}
     };
     template<size_t nleft, size_t done>
@@ -560,6 +585,7 @@ struct SIMDTypes<uint64_t> {
     }
     using VType = UType<SIMDTypes<ValueType>>;
 };
+template<> struct SIMDTypes<int64_t>: public SIMDTypes<uint64_t> {};
 
 template<>
 struct SIMDTypes<uint32_t> {
@@ -585,6 +611,7 @@ struct SIMDTypes<uint32_t> {
     }
     using VType = UType<SIMDTypes<ValueType>>;
 };
+template<> struct SIMDTypes<int32_t>: public SIMDTypes<uint32_t> {};
 
 template<>
 struct SIMDTypes<uint16_t> {
@@ -610,6 +637,7 @@ struct SIMDTypes<uint16_t> {
     }
     using VType = UType<SIMDTypes<ValueType>>;
 };
+template<> struct SIMDTypes<int16_t>: public SIMDTypes<uint16_t> {};
 template<>
 struct SIMDTypes<uint8_t> {
     using ValueType = uint8_t;
@@ -634,6 +662,7 @@ struct SIMDTypes<uint8_t> {
     }
     using VType = UType<SIMDTypes<ValueType>>;
 };
+template<> struct SIMDTypes<int8_t>: public SIMDTypes<uint8_t> {};
 
 template<>
 struct SIMDTypes<float>{
@@ -643,21 +672,25 @@ struct SIMDTypes<float>{
     declare_all(ps, 512)
 #ifndef NO_SLEEF
     dec_double_sz(__m512)
-    dec_all_trig(f16, avx512f)
+    declare_all_sleef_special(f16, avx512f)
 #endif // #ifndef NO_SLEEF
 #elif __AVX2__
     using Type = __m256;
     declare_all(ps, 256)
 #ifndef NO_SLEEF
     dec_double_sz(__m256)
-    dec_all_trig(f8, avx2)
+    declare_all_sleef_special(f8, avx2)
 #endif // #ifndef NO_SLEEF
 #elif __SSE2__
     using Type = __m128;
     declare_all(ps, )
 #ifndef NO_SLEEF
     dec_double_sz(__m128)
-    dec_all_trig(f4, sse2)
+#  ifdef __SSE4_1__
+    declare_all_sleef_special(f4, sse4)
+#  else
+    declare_all_sleef_special(f4, sse2)
+#  endif
 #endif // #ifndef NO_SLEEF
 #else
 #error("Need at least sse2")
@@ -680,24 +713,32 @@ struct SIMDTypes<double>{
     declare_all(pd, 512)
 #ifndef NO_SLEEF
     dec_double_sz(__m512d)
-    dec_all_trig(d8, avx512f)
+    declare_all_sleef_special(d8, avx512f)
+    dec_sleefop_noprec(ldexp, d8, avx512f)
 #endif // #ifndef NO_SLEEF
 #elif __AVX2__
     using Type = __m256d;
     declare_all(pd, 256)
 #ifndef NO_SLEEF
     dec_double_sz(__m256d)
-    dec_all_trig(d4, avx2)
+    declare_all_sleef_special(d4, avx2)
+    dec_sleefop_noprec(ldexp, d4, avx2)
 #endif // #ifndef NO_SLEEF
 #elif __SSE2__
     using Type = __m128d;
     declare_all(pd, )
 #ifndef NO_SLEEF
     dec_double_sz(__m128d)
-    dec_all_trig(d2, sse2)
+#  ifdef __SSE4_1__
+    declare_all_sleef_special(d2, sse4)
+    dec_sleefop_noprec(ldexp, d2, sse4)
+#  else
+    declare_all_sleef_special(d2, sse2)
+    dec_sleefop_noprec(ldexp, d2, sse2)
+#  endif
 #endif // #ifndef NO_SLEEF
 #else
-#error("Need at least sse2")
+#  error("Need at least sse2")
 #endif
     static constexpr size_t ALN = sizeof(Type) / sizeof(char);
     static constexpr size_t MASK = ALN - 1;
@@ -845,14 +886,14 @@ void block_apply(FloatType *pos, size_t nelem, const Functor &func=Functor{}) {
 template<typename Container, typename Functor>
 void block_apply(Container &con, const Functor &func=Functor{}) {
 #ifndef NO_BLAZE
-    if constexpr(IS_CONTIGUOUS_UNCOMPRESSED_BLAZE(Container)) {
+    CONST_IF(IS_CONTIGUOUS_UNCOMPRESSED_BLAZE(Container)) {
         const size_t nelem(con.size());
         block_apply(&(*std::begin(con)), nelem, func);
     } else {
 #endif
         if(&con[1] - &con[0] == 1) {
-        const size_t nelem(con.size());
-        block_apply(&(*std::begin(con)), nelem, func);
+            const size_t nelem(con.size());
+            block_apply(&(*std::begin(con)), nelem, func);
         } else for(auto &el: con) el = func.scalar(el);
 #ifndef NO_BLAZE
     }
@@ -884,12 +925,11 @@ void memblockset(void *dest, T val, SizeType nbytes) {
 #undef dec_sleefop_prec
 #undef dec_all_precs
 #undef dec_all_precs_u05
-#undef dec_all_trig
+#undef declare_all_sleef_special
 #undef dec_double_sz
 #endif // #ifndef NO_SLEEF
 
 #undef declare_all
 #undef decop
-#undef VEC_MAYBE_UNUSED
 
 #endif // #ifndef _VEC_H__
