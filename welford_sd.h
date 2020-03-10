@@ -62,7 +62,9 @@ public:
             old_mean_ = new_mean_, olds_ = news_;
         }
     }
+#ifndef NDEBUG
 #define ASSERTFULL() do {if(!n_) {throw std::runtime_error("Cannot calculate stats on an empty stream.");}} while(0)
+#endif
     size_t n()   const {return n_;}
     const VecType &mean()     const {ASSERTFULL(); return new_mean_;}
     const VecType &variance() const {ASSERTFULL(); return news_ / (n_ - 1);}

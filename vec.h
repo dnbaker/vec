@@ -58,7 +58,7 @@
 #  elif __SSE2__
 #    define VECTOR_WIDTH 16u
 #  else
-#    error("Require at least SSE2")
+#    define VECTOR_WIDTH 8u
 #  endif
 #endif
 
@@ -574,7 +574,7 @@ struct SIMDTypes<uint64_t> {
     using Type = __m128i;
     declare_all_int128(epi64,)
 #else
-#error("Need at least sse2")
+    using Type = uint64_t;
 #endif
     static constexpr size_t ALN = sizeof(Type) / sizeof(char);
     static constexpr size_t MASK = ALN - 1;
