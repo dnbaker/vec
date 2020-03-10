@@ -79,10 +79,10 @@ using std::uint64_t;
 #ifndef NO_SLEEF
 namespace scalar {
     using namespace std;
-    Sleef_double2 sincos(double x) {
+    __attribute__((const)) Sleef_double2 sincos(double x) {
         return Sleef_double2{sin(x), cos(x)};
     }
-    Sleef_float2 sincos(float x) {
+    __attribute__((const)) Sleef_float2 sincos(float x) {
         return Sleef_float2{sin(x), cos(x)};
     }
     template<typename T> auto sqrt_u35(T val) {return sqrt(val);}
