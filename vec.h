@@ -149,8 +149,6 @@ struct SIMDTypes;
 /* Use or separately because it's a keyword.*/
 
 #if __AVX512F__
-#define DECMAX64 static constexpr decltype(&_mm512_max_epu64) max = &_mm512_max_epu64; \
-                 static constexpr decltype(&_mm512_min_epu64) min = &_mm512_min_epu64;
 #else
     #define DECMAX64 \
     static INLINE typename SIMDTypes<ValueType>::Type max(typename SIMDTypes<ValueType>::Type ret, typename SIMDTypes<ValueType>::Type rhs) { \
