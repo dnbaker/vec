@@ -165,6 +165,10 @@ struct SIMDTypes;
     }
 #endif
 
+#define declare_avx512_cmpeq_mask(sz) \
+    static constexpr decltype(&_mm512_cmpeq_epi##sz##_mask) cmpeq_mask = &_mm512_cmpeq_epi##sz##_mask; \
+    static constexpr decltype(&_mm512_cmpneq_epi##sz##_mask) cmpneq_mask = &_mm512_cmpneq_epi##sz##_mask;
+
 #define declare_all(suf, sz) \
    decop(loadu, suf, sz) \
    decop(storeu, suf, sz) \
@@ -209,7 +213,8 @@ struct SIMDTypes;
     static constexpr decltype(&OP(mullo, epi32, sz)) mul = &OP(mullo, epi32, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
     static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
-    decop(set1, epi32, sz)
+    decop(set1, epi32, sz) \
+    decop(cmpeq, epi32, sz)
 
 #define declare_int_epi32_512(sz) \
     decop(slli, epi32, sz) \
@@ -222,7 +227,8 @@ struct SIMDTypes;
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
     static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
-    decop(set1, epi32, sz)
+    decop(set1, epi32, sz) \
+    declare_avx512_cmpeq_mask(32)
 
 #define declare_int_epi32_128(sz) \
     decop(slli, epi32, sz) \
@@ -236,7 +242,8 @@ struct SIMDTypes;
     static constexpr decltype(&OP(xor, si128, sz)) xor_fn = &OP(xor, si128, sz);\
     static constexpr decltype(&OP(and, si128, sz)) and_fn = &OP(and, si128, sz);\
     static constexpr decltype(&OP(or, si128, sz))  or_fn = &OP(or, si128, sz);\
-    decop(set1, epi32, sz)
+    decop(set1, epi32, sz) \
+    decop(cmpeq, epi32, sz)
 
 #define declare_int_epi8(sz) \
     decop(add, epi8, sz) \
@@ -246,7 +253,8 @@ struct SIMDTypes;
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
     static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
-    decop(set1, epi8, sz)
+    decop(set1, epi8, sz) \
+    decop(cmpeq, epi8, sz) \
 
 #define declare_int_epi8_512(sz) \
     decop(add, epi8, sz) \
@@ -256,7 +264,8 @@ struct SIMDTypes;
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
     static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
-    decop(set1, epi8, sz)
+    decop(set1, epi8, sz) \
+    declare_avx512_cmpeq_mask(8)
 
 #define declare_int_epi8_128(sz) \
     decop(add, epi8, sz) \
@@ -266,7 +275,8 @@ struct SIMDTypes;
     static constexpr decltype(&OP(xor, si128, sz)) xor_fn = &OP(xor, si128, sz);\
     static constexpr decltype(&OP(and, si128, sz)) and_fn = &OP(and, si128, sz);\
     static constexpr decltype(&OP(or, si128, sz))  or_fn = &OP(or, si128, sz);\
-    decop(set1, epi8, sz)
+    decop(set1, epi8, sz) \
+    decop(cmpeq, epi8, sz)
 
 #define declare_int_epi16(sz) \
     decop(slli, epi16, sz) \
@@ -280,7 +290,8 @@ struct SIMDTypes;
     static constexpr decltype(&OP(mullo, epi16, sz)) mul = &OP(mullo, epi16, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
     static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
-    decop(set1, epi16, sz)
+    decop(set1, epi16, sz) \
+    decop(cmpeq, epi16, sz)
 
 #define declare_int_epi16_512(sz) \
     decop(slli, epi16, sz) \
@@ -293,7 +304,8 @@ struct SIMDTypes;
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
     static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
-    decop(set1, epi16, sz)
+    decop(set1, epi16, sz) \
+    declare_avx512_cmpeq_mask(16)
 
 #define declare_int_epi16_128(sz) \
     decop(slli, epi16, sz) \
@@ -307,7 +319,8 @@ struct SIMDTypes;
     static constexpr decltype(&OP(xor, si128, sz)) xor_fn = &OP(xor, si128, sz);\
     static constexpr decltype(&OP(and, si128, sz)) and_fn = &OP(and, si128, sz);\
     static constexpr decltype(&OP(or, si128, sz))  or_fn = &OP(or, si128, sz);\
-    decop(set1, epi16, sz)
+    decop(set1, epi16, sz) \
+    decop(cmpeq, epi16, sz) \
 
 
 #define declare_int_epi64(sz) \
@@ -320,7 +333,9 @@ struct SIMDTypes;
     static constexpr decltype(&OP(mullo, epi64, sz)) mul = &OP(mullo, epi64, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
     static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
-    decop(set1, epi64x, sz)
+    decop(set1, epi64x, sz) \
+    decop(cmpeq, epi64, sz) \
+    
 
 #define declare_int_epi64_512(sz) \
     decop(slli, epi64, sz) \
@@ -333,7 +348,8 @@ struct SIMDTypes;
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
     static constexpr decltype(&OP(and, si##sz, sz)) and_fn = &OP(and, si##sz, sz);\
-    decop(set1, epi64, sz)
+    decop(set1, epi64, sz) \
+    declare_avx512_cmpeq_mask(64)
 
 #define declare_int_epi64_128(sz) \
     decop(slli, epi64, sz) \
@@ -345,7 +361,8 @@ struct SIMDTypes;
     static constexpr decltype(&OP(xor, si128, sz)) xor_fn = &OP(xor, si128, sz);\
     static constexpr decltype(&OP(and, si128, sz)) and_fn = &OP(and, si128, sz);\
     static constexpr decltype(&OP(or, si128, sz))  or_fn = &OP(or, si128, sz);\
-    decop(set1, epi64x, sz)
+    decop(set1, epi64x, sz) \
+    decop(cmpeq, epi64, sz)
 
 #define declare_all_int(suf, sz) \
     declare_int_ls(suf, sz) \
@@ -357,7 +374,7 @@ struct SIMDTypes;
 
 #define declare_all_int512(suf, sz) \
     declare_int_ls(suf, sz) \
-    declare_int_epi64_512(sz)
+    declare_int_epi64_512(sz) \
 
 #define declare_all_int_32(suf, sz) \
     declare_int_ls(suf, sz) \
