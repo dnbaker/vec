@@ -148,6 +148,23 @@ struct SIMDTypes;
 
 /* Use or separately because it's a keyword.*/
 
+#if __AVX512F__
+#define DECMAX64 static constexpr decltype(&_mm512_max_epu64) max = &_mm512_max_epu64; \
+                 static constexpr decltype(&_mm512_min_epu64) min = &_mm512_min_epu64;
+#else
+    #define DECMAX64 \
+    static INLINE typename SIMDTypes<ValueType>::Type max(typename SIMDTypes<ValueType>::Type ret, typename SIMDTypes<ValueType>::Type rhs) { \
+        for(unsigned i = 0; i < sizeof(Type) / sizeof(uint64_t); ++i) \
+            ((uint64_t *)&ret)[i] = std::max(((uint64_t *)&ret)[i], ((uint64_t *)&rhs)[i]); \
+        return ret; \
+    } \
+    static INLINE typename SIMDTypes<ValueType>::Type min(typename SIMDTypes<ValueType>::Type ret, typename SIMDTypes<ValueType>::Type rhs) { \
+        for(unsigned i = 0; i < sizeof(Type) / sizeof(uint64_t); ++i) \
+            ((uint64_t *)&ret)[i] = std::min(((uint64_t *)&ret)[i], ((uint64_t *)&rhs)[i]); \
+        return ret; \
+    }
+#endif
+
 #define declare_all(suf, sz) \
    decop(loadu, suf, sz) \
    decop(storeu, suf, sz) \
@@ -291,6 +308,7 @@ struct SIMDTypes;
     static constexpr decltype(&OP(and, si128, sz)) and_fn = &OP(and, si128, sz);\
     static constexpr decltype(&OP(or, si128, sz))  or_fn = &OP(or, si128, sz);\
     decop(set1, epi16, sz)
+
 
 #define declare_int_epi64(sz) \
     decop(slli, epi64, sz) \
@@ -584,6 +602,7 @@ struct SIMDTypes<uint64_t> {
         return (reinterpret_cast<uint64_t>(ptr) & MASK) == 0;
     }
     using VType = UType<SIMDTypes<ValueType>>;
+    DECMAX64
 };
 template<> struct SIMDTypes<int64_t>: public SIMDTypes<uint64_t> {};
 
