@@ -679,12 +679,36 @@ struct SIMDTypes<uint8_t> {
 #if HAS_AVX_512
     using Type = __m512i;
     declare_all_int512_8(epi8, 512)
+    static Type srli(Type v, int shift) {
+        auto upmask = _mm512_set1_epi16(0xFF00u), lomask = _mm512_set1_epi16(0x00FFu);
+        return (_mm512_srli_epi16(v & upmask, shift) & upmask) | (_mm512_srli_epi16(v & lomask, shift) & lomask);
+    }
+    static Type slli(Type v, int shift) {
+        auto upmask = _mm512_set1_epi16(0xFF00u), lomask = _mm512_set1_epi16(0x00FFu);
+        return (_mm512_slli_epi16(v & upmask, shift) & upmask) | (_mm512_slli_epi16(v & lomask, shift) & lomask);
+    }
 #elif __AVX2__
     using Type = __m256i;
     declare_all_int_8(epi8, 256)
+    static Type srli(Type v, int shift) {
+        auto upmask = _mm256_set1_epi16(0xFF00u), lomask = _mm256_set1_epi16(0x00FFu);
+        return (_mm256_srli_epi16(v & upmask, shift) & upmask) | (_mm256_srli_epi16(v & lomask, shift) & lomask);
+    }
+    static Type slli(Type v, int shift) {
+        auto upmask = _mm256_set1_epi16(0xFF00u), lomask = _mm256_set1_epi16(0x00FFu);
+        return (_mm256_slli_epi16(v & upmask, shift) & upmask) | (_mm256_slli_epi16(v & lomask, shift) & lomask);
+    }
 #elif __SSE2__
     using Type = __m128i;
     declare_all_int128_8(epi8,)
+    static Type srli(Type v, int shift) {
+        auto upmask = _mm_set1_epi16(0xFF00u), lomask = _mm_set1_epi16(0x00FFu);
+        return (_mm_srli_epi16(v & upmask, shift) & upmask) | (_mm_srli_epi16(v & lomask, shift) & lomask);
+    }
+    static Type slli(Type v, int shift) {
+        auto upmask = _mm_set1_epi16(0xFF00u), lomask = _mm_set1_epi16(0x00FFu);
+        return (_mm_slli_epi16(v & upmask, shift) & upmask) | (_mm_slli_epi16(v & lomask, shift) & lomask);
+    }
 #else
 #error("Need at least sse2")
 #endif
