@@ -679,12 +679,30 @@ struct SIMDTypes<uint8_t> {
 #if HAS_AVX_512
     using Type = __m512i;
     declare_all_int512_8(epi8, 512)
+    static INLINE auto srli(__m512i a, int imm8) {
+        return _mm512_and_si512(_mm512_set1_epi8(0xFF >> imm8), _mm512_srli_epi32(a, imm8));
+    }
+    static INLINE auto slli(__m512i a, int imm8) {
+        return _mm512_and_si512(_mm512_set1_epi8(0xFF << imm8), _mm512_slli_epi32(a, imm8));
+    }
 #elif __AVX2__
     using Type = __m256i;
     declare_all_int_8(epi8, 256)
+    static INLINE auto srli(__m256i a, int imm8) {
+        return _mm256_and_si256(_mm256_set1_epi8(0xFF >> imm8), _mm256_srli_epi32(a, imm8));
+    }
+    static INLINE auto slli(__m256i a, int imm8) {
+        return _mm256_and_si256(_mm256_set1_epi8(0xFF << imm8), _mm256_slli_epi32(a, imm8));
+    }
 #elif __SSE2__
     using Type = __m128i;
     declare_all_int128_8(epi8,)
+    static INLINE auto srli(__m128i a, int imm8) {
+        return _mm_and_si128(_mm_set1_epi8(0xFF >> imm8), _mm_srli_epi32(a, imm8));
+    }
+    static INLINE auto slli(__m128i a, int imm8) {
+        return _mm_and_si128(_mm_set1_epi8(0xFF << imm8), _mm_slli_epi32(a, imm8));
+    }
 #else
 #error("Need at least sse2")
 #endif
