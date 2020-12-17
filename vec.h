@@ -205,8 +205,8 @@ struct SIMDTypes;
     decop(srli, epi32, sz) \
     decop(add, epi32, sz) \
     decop(sub, epi32, sz) \
-    decop(min, epi32, sz) \
-    decop(max, epi32, sz) \
+    decop(min, epu32, sz) \
+    decop(max, epu32, sz) \
     decop(mullo, epi32, sz) \
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
     static constexpr decltype(&OP(mullo, epi32, sz)) mul = &OP(mullo, epi32, sz);\
@@ -220,8 +220,8 @@ struct SIMDTypes;
     decop(srli, epi32, sz) \
     decop(add, epi32, sz) \
     decop(sub, epi32, sz) \
-    decop(min, epi32, sz) \
-    decop(max, epi32, sz) \
+    decop(min, epu32, sz) \
+    decop(max, epu32, sz) \
     decop(mullo, epi32, sz) \
     static constexpr decltype(&OP(xor, si##sz, sz)) xor_fn = &OP(xor, si##sz, sz);\
     static constexpr decltype(&OP(or, si##sz, sz))  or_fn = &OP(or, si##sz, sz);\
@@ -234,8 +234,8 @@ struct SIMDTypes;
     decop(srli, epi32, sz) \
     decop(add, epi32, sz) \
     decop(sub, epi32, sz) \
-    decop(min, epi32, sz) \
-    decop(max, epi32, sz) \
+    decop(min, epu32, sz) \
+    decop(max, epu32, sz) \
     static constexpr decltype(&_mm_mullo_epi32) mul = &_mm_mullo_epi32;\
     static constexpr decltype(&_mm_mullo_epi32) mullo = &_mm_mullo_epi32;\
     static constexpr decltype(&OP(xor, si128, sz)) xor_fn = &OP(xor, si128, sz);\
